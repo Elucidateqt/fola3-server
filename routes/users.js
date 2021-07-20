@@ -3,7 +3,10 @@ const router = express.Router()
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const authMiddleware =  require('../middleware/auth')
+const authHelper = require('../helpers/auth')
 const userManager = require('../database/users')
+
+let refreshTokens = []
 
 
 const mailPattern = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
@@ -13,7 +16,6 @@ router.get('/', authMiddleware.authenticateToken, async (req, res) => {
     if(req.user.role === 'Super Admin' || req.user.role === 'Admin' ){
         userManager.getAllUsers()
         .then(results => {
-            console.log("results")
             return res.send(results)
         })
         .catch(err => res.sendStatus(500))
@@ -46,8 +48,10 @@ router.post('/login', async (req, res) => {
         .then(async  result => {
             if(result && await bcrypt.compare(req.body.password, result.password)){
                 const user = {"uuid": result.uuid, "username": result.username, "role": result.role}
-                const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET)
-                return res.json({accessToken: accessToken})
+                const accessToken = authHelper.generateAccessToken(user)
+                const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET)
+                refreshTokens.push(refreshToken)
+                return res.json({accessToken: accessToken, refreshToken: refreshToken})
             }else{
                 return res.send(`incorrect email or password`)
             }
@@ -58,6 +62,29 @@ router.post('/login', async (req, res) => {
     }else{
         return res.status(400).send("missing email or password")
     }
+})
+
+router.post('/refreshToken', (req, res) => {
+    const refreshToken = req.body.token
+    if(refreshToken){
+        if(!refreshTokens.includes(refreshToken)){
+            return res.sendStatus(403)
+        }
+        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) =>{
+            if(err){
+                return res.sendStatus(403)
+            }
+            const accessToken = authHelper.generateAccessToken({"uuid": user.uuid, "username": user.username, "role": user.role})
+            res.json({accessToken: accessToken})
+        })
+    }else{
+        res.sendStatus(401)
+    }
+})
+
+router.delete('/logout', (req, res) => {
+    refreshTokens = refreshTokens.filter(token => token !== req.body.token)
+    res.sendStatus(204)
 })
 
 module.exports = router

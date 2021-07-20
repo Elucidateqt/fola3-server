@@ -39,7 +39,6 @@ router.post('/login', async (req, res) => {
             const result = await userManager.getUser(req.body.email).catch(err => {
                 console.error("error logging user in", err)
             })
-            console.log("login result", result)
             if(await bcrypt.compare(req.body.password, result.password)){
                 const user = {"uuid": result.uuid, "username": result.username, "role": result.role}
                 const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET)

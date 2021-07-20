@@ -24,7 +24,6 @@ module.exports.getAllProjects = async () => {
         promisePool.query(`SELECT name FROM projects WHERE 1=1`)
         .then(([rows, fields]) => resolve(rows))
         .catch(err => {
-            console.log("ERR?", err)
             reject(err)
         })
     })
