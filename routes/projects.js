@@ -1,13 +1,7 @@
 const express = require('express')
 const router = express.Router()
-const bcrypt = require('bcrypt')
-const jwt = require('jsonwebtoken')
 const authMiddleware =  require('../middleware/auth')
-const userManager = require('../database/users')
 const projectManager = require('../database/projects')
-
-
-const mailPattern = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
 
 
 router.get('/', authMiddleware.authenticateToken, async (req, res) => {
@@ -18,40 +12,50 @@ router.get('/', authMiddleware.authenticateToken, async (req, res) => {
     }else{
         projectManager.getProjectsOfUser(req.user.uuid)
         .then(rows => res.send(rows))
-        .catch(err => res.sendStatus(500))
+        .catch(err => {
+            console.error("Error loading user Projects from DB:", err)
+            res.sendStatus(500)
+        })
     }
 })
 
 router.post('/create', authMiddleware.authenticateToken, async (req, res) => {
-    if(req.body.projectName){
-        projectManager.addProject(req.user.uuid, req.body.projectName)
-        .then(() => res.sendStatus(201))
-        .catch(() => res.sendStatus(500))
-    }else{
-        res.status(400).send('project-name missing')
-    }
+    let projectName = req.body.projectName || 'New Project',
+        projectDescription = req.body.description || 'Description missing'
+    projectManager.addProject(req.user.uuid, projectName, projectDescription)
+    .then(() => {return res.sendStatus(201)})
+    .catch((err) => {
+        console.error("error creating project in DB", err)
+        return res.sendStatus(500)})
 })
 
 
-router.post('/login', async (req, res) => {
-    try{
-        if(req.body.email && req.body.password && mailPattern.test(req.body.email)){
-            const result = await userManager.getUser(req.body.email).catch(err => {
-                console.error("error logging user in", err)
+router.post('/delete', authMiddleware.authenticateToken, async (req, res) => {
+    res.sendStatus(405)
+})
+
+router.post('/addUser', authMiddleware.authenticateToken, async (req, res) => {
+    if(req.body.projectUuid && req.body.userUuid){
+        const projectRole = await projectManager.getUserRoleInProject(req.user.uuid, req.body.projectUuid).catch(err => {
+            console.error("error getting user role in project:", err)
+            return res.sendStatus(500)
+        })
+        if(projectRole && projectRole === 'Admin'){
+            projectManager.addUserToProject(req.body.userUuid, req.body.projectUuid)
+            .then(() => {return res.sendStatus(201)})
+            .catch((err) => {
+                if(err.errno === 1062){
+                    console.error("error adding user to project: already member")
+                    return res.sendStatus(409)
+                }
+                console.error("error adding user to project:", err)
+                return res.sendStatus(500)
             })
-            if(await bcrypt.compare(req.body.password, result.password)){
-                const user = {"uuid": result.uuid, "username": result.username, "role": result.role}
-                const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET)
-                res.json({accessToken: accessToken})
-            }else{
-                res.send(`incorrect email or password`)
-            }
-            
         }else{
-            res.status(400).send("missing email or password")
+            return res.sendStatus(403)
         }
-    }catch{
-        res.status(500).send("error logging in")
+    }else{
+        return res.sendStatus(400)
     }
 })
 
