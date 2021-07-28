@@ -2,12 +2,15 @@ require('dotenv').config()
 const express = require('express')
 const app = express()
 const cors = require('cors')
-const mongoose = require('mongoose')
 const db = require('./models')
 const userRoute = require('./routes/users')
 const authRoute = require("./routes/auth")
 const projectRoute = require('./routes/projects')
+const authController = require('./controllers/auth')
 const Port = process.env.PORT || 8081
+const SuperAdminName = process.env.ADMIN_ACC_USERNAME
+const SuperAdminPw = process.env.ADMIN_ACC_PW
+const SuperAdminMail = process.env.ADMIN_MAIL
 const http = require('http')
 
 db.mongoose
@@ -25,6 +28,7 @@ db.mongoose
     })
 
 const Role = db.role
+const User = db.user
 
 app.use(cors())
 app.use(express.json())
@@ -61,4 +65,15 @@ function initializeDB() {
         })
       }
     });
+    //check if any Users exist and add super admin otherwise
+    User.estimatedDocumentCount((err, count) => {
+        if(!err && count === 0){
+            authController.createUser(SuperAdminName, SuperAdminMail, SuperAdminPw, 'super admin', (err, user) => {
+                if(err){
+                    console.error('Error creating Super Admin during DB-Init.')
+                }
+                console.log('Successfully created Super Admin account.')
+            })
+        }
+    })
   }
