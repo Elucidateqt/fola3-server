@@ -29,6 +29,7 @@ db.mongoose
 
 const Role = db.role
 const User = db.user
+const ProjectRole = db.projectRole
 
 app.use(cors())
 app.use(express.json())
@@ -41,7 +42,7 @@ app.get('/health', function (req, res) {
 
 app.use("/auth", authRoute)
 app.use("/users", userRoute)
-//app.use("/projects", projectRoute)
+app.use("/projects", projectRoute)
 
 server = http.createServer(app)
 server.listen(Port, () => {
@@ -76,4 +77,19 @@ function initializeDB() {
             })
         }
     })
+    //check if project roles exist in db and add them otherwise
+    ProjectRole.estimatedDocumentCount((err, count) => {
+        if (!err && count === 0) {
+            db.PROJECT_ROLES.forEach(roleName => {
+                new ProjectRole({
+                    name: roleName
+                }).save(err => {
+                    if(err){
+                        console.error(`Error creating Project-Role "${roleName}" during DB-Init: ${err}`)
+                    }
+                    console.log(`Added role ${roleName} to projectRoles collection.`)
+                })
+            })
+        }
+        });
   }

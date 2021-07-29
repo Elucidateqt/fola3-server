@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const authMiddleware =  require('../middleware/auth')
+const controller = require('../controllers/projects')
 
 
 router.get('/', authMiddleware.authenticateToken, async (req, res) => {
@@ -18,15 +19,7 @@ router.get('/', authMiddleware.authenticateToken, async (req, res) => {
     }
 })
 
-router.post('/create', authMiddleware.authenticateToken, async (req, res) => {
-    let projectName = req.body.projectName || 'New Project',
-        projectDescription = req.body.description || 'Description missing'
-    projectManager.addProject(req.user.uuid, projectName, projectDescription)
-    .then(() => {return res.sendStatus(201)})
-    .catch((err) => {
-        console.error("error creating project in DB", err)
-        return res.sendStatus(500)})
-})
+router.post('/create', authMiddleware.authenticateToken, controller.createProject)
 
 
 router.post('/delete', authMiddleware.authenticateToken, async (req, res) => {
