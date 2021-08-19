@@ -16,7 +16,8 @@ const http = require('http')
 db.mongoose
     .connect('mongodb://localhost/kano-surveyer', {
         useNewUrlParser: true,
-        useUnifiedTopology: true
+        useUnifiedTopology: true,
+        useCreateIndex: true
     })
     .then(()=> {
         console.log("Successfully connected to mongoDB.")
@@ -77,19 +78,4 @@ function initializeDB() {
             })
         }
     })
-    //check if project roles exist in db and add them otherwise
-    ProjectRole.estimatedDocumentCount((err, count) => {
-        if (!err && count === 0) {
-            db.PROJECT_ROLES.forEach(roleName => {
-                new ProjectRole({
-                    name: roleName
-                }).save(err => {
-                    if(err){
-                        console.error(`Error creating Project-Role "${roleName}" during DB-Init: ${err}`)
-                    }
-                    console.log(`Added role ${roleName} to projectRoles collection.`)
-                })
-            })
-        }
-        });
   }

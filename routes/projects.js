@@ -1,28 +1,29 @@
 const express = require('express')
 const router = express.Router()
 const authMiddleware =  require('../middleware/auth')
+const projectWare = require('../middleware/projects')
 const controller = require('../controllers/projects')
 
 
-router.get('/', authMiddleware.authenticateToken, async (req, res) => {
-    if(req.user.role === 'Super Admin' || req.user.role === 'Admin'){
-        projectManager.getAllProjects()
-        .then(rows => res.send(rows))
-        .catch(err => res.sendStatus(500))
-    }else{
-        projectManager.getProjectsOfUser(req.user.uuid)
-        .then(rows => res.send(rows))
-        .catch(err => {
-            console.error("Error loading user Projects from DB:", err)
-            res.sendStatus(500)
-        })
-    }
-})
+router.get('/', authMiddleware.authenticateToken, controller.getMultipleProjects)
 
-router.post('/create', authMiddleware.authenticateToken, controller.createProject)
+router.get('/:projectId', authMiddleware.authenticateToken, projectWare.canViewProject, controller.getProject)
+
+router.post('/', authMiddleware.authenticateToken, controller.createProject)
+
+router.delete('/:projectId', authMiddleware.authenticateToken, projectWare.canUserAdminstrateProject, controller.deleteProject)
+
+router.put('/:projectId/description', authMiddleware.authenticateToken, projectWare.canUserAdminstrateProject, controller.setProjectDescription)
+
+router.put('/:projectId/name', authMiddleware.authenticateToken, projectWare.canUserAdminstrateProject, controller.setProjectName)
+
+router.post('/:projectId/users', authMiddleware.authenticateToken, projectWare.canUserAdminstrateProject, controller.addMembers)
+
+router.delete('/:projectId/users', authMiddleware.authenticateToken, projectWare.canUserAdminstrateProject, controller.removeMemembers)
 
 
-router.post('/delete', authMiddleware.authenticateToken, async (req, res) => {
+
+router.delete('/:projectId', authMiddleware.authenticateToken, projectWare.canUserAdminstrateProject, (req, res) => {
     res.sendStatus(405)
 })
 

@@ -81,12 +81,12 @@ exports.signIn = (req, res) => {
 };
 
 exports.signOut = (req, res) => {
-    db.refreshTokens = db.refreshTokens.filter(token => token !== req.body.token)
+    db.refreshTokens = db.refreshTokens.filter(token => token !== req.body.refreshToken)
     res.sendStatus(204)
 }
 
 exports.refreshAccessToken = (req, res) => {
-    const refreshToken = req.body.token
+    const refreshToken = req.body.refreshToken
     if(refreshToken){
         if(!db.refreshTokens.includes(refreshToken)){
             return res.sendStatus(403)
@@ -95,7 +95,13 @@ exports.refreshAccessToken = (req, res) => {
             if(err){
                 return res.sendStatus(403)
             }
-            const accessToken = generateAccessToken({"id": user.id, "username": user.username, "role": user.role})
+            const userPayload = {
+                uuid: user.uuid,
+                username: user.username,
+                email: user.email,
+                role: user.role.name
+            }
+            const accessToken = generateAccessToken(userPayload)
             res.json({accessToken: accessToken})
         })
     }else{

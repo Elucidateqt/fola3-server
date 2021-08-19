@@ -13,9 +13,17 @@ exports.authenticateToken = (req, res, next) => {
         if(err){
             return res.sendStatus(403)
         }
-        req.user = user
-        next()
-        return
+        User.findOne({
+          uuid: user.uuid
+        })
+        .populate('role', 'name')
+        .exec((err, user) => {
+          if(err){
+            res.status(500).send({message: err})
+          }
+          req.user = user
+          return next()
+        })
     })
 }
 

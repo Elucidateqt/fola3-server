@@ -19,8 +19,8 @@ const Project = new mongoose.model(
                     ref: "User"
                 },
                 role: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: "ProjectRole"
+                    type: String,
+                    required: true
                 }
             }
         ]
