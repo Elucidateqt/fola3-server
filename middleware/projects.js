@@ -1,68 +1,51 @@
 const db = require('../models')
 const Project = db.project
 const User = db.user
+const helpers = require('../lib/helpers')
+const registry = require('../lib/registry')
+const logger = registry.getService('logger').child({ component: 'Project Middleware'})
 
-exports.isUserInProject = (req, res, next) => {
-    Project.findOne({
-        uuid: req.params.projectId
-    }).exec((err, project) => {
-        if(err){
-            res.status(500).send({ message: err })
-            return
-        }
-        User.findOne({
-            $and: [{uuid: req.user.uuid}, {_id: {$in: project.members}}]
-        }).exec((err, user) => {
-            if(err){
-                res.status(500).send({ message: err })
-                return
-            }
-            console.log("user in project?", user)
 
-        })
-    })
-}
-
-exports.canViewProject = (req, res, next) => {
-    User.findOne({
-        uuid: req.user.uuid
-    })
-    .populate("role", "-__v")
-    .exec((err, user) => {
-        if(err){
-            return res.status(500).send({message: err})
-        }
-        console.log("canViewProject", user)
-        next()
-    })
-}
-
-exports.canUserAdminstrateProject = (req, res, next) => {
-    User.findOne({
-        uuid: req.user.uuid
-    })
-    .populate("role", "-__v")
-    .exec((err, user) => {
-        if(err){
-            return res.status(500).send({message: err})
-        }
-        //page-wide super admin and admins always may administrate projects
-        if(user.role.name === 'super admin' || user.role.name === 'admin'){
+exports.isProjectUuidValid = async (req, res, next) => {
+    try{
+        if(helpers.isValidUuid(req.params.projectId)){
             return next()
-        }else{
-            Project.findOne({
-                uuid: req.params.projectId,
-                members: {$elemMatch: {user: user._id, role: 'admin'}}
-            })
-            .exec((err, project) => {
-                if(err){
-                    return res.status(500).send({message: err})
-                }
-                if(project){
-                    return next()
-                }
-                return res.sendStatus(403)
-            })
         }
-    })
+
+        return res.status(400).send({ "message": "projectUuidInvalid" })
+    }catch(err){
+        console.error(err)
+        return res.sendStatus(500)
+    }
+}
+
+exports.isUserInProject = async (req, res, next) => {
+    try{
+        if(await Project.isUserInProject(req.user.uuid, req.params.projectId)){
+            return next()
+        }
+        return res.status(403)
+    }catch(err){
+        console.error(err)
+        return res.sendStatus(500)
+    }
+}
+
+exports.canViewProject = async (req, res, next) => {
+    try{
+        if(req.user.role === db.ROLES.ADMIN || req.user.role === db.ROLES.SUPER_ADMIN){
+            return next()
+        }
+        await isUserInProject(req.user.uuid, req.params.projectId)
+    }catch(err){
+        return res.status(500).send({ "message": err })
+    }
+}
+
+exports.canUserAdminstrateProject = async (req, res, next) => {
+    const isProjectAdmin = await Project.hasUserRoleInProject(req.user.uuid, req.params.projectId, 'admin')
+    if(req.user.role === db.ROLES.ADMIN || req.user.role === db.ROLES.SUPER_ADMIN || isProjectAdmin){
+        return next()
+    }
+    return res.sendStatus(401)
 }

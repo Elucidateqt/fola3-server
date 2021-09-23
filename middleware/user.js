@@ -2,8 +2,8 @@ const db = require('../models')
 const User = db.user
 const mailPattern = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
 
-checkSignUpData = (req, res, next) => {
-  if(req.body.email && req.body.username && req.body.password && mailPattern.test(req.body.email)){
+const checkSignUpData = (req, res, next) => {
+  if(req.body.email && mailPattern.test(req.body.email) && req.body.username && req.body.password){
     next()
     return             
   }else{
@@ -11,7 +11,7 @@ checkSignUpData = (req, res, next) => {
   }
 }
 
-checkLogInData = (req, res, next) => {
+const checkLogInData = (req, res, next) => {
   if(req.body.email && req.body.password && mailPattern.test(req.body.email)){
     next()
     return
@@ -20,37 +20,16 @@ checkLogInData = (req, res, next) => {
   }
 }
 
-checkDuplicateUsernameOrEmail = (req, res, next) => {
-    // Username
-    User.findOne({
-      username: req.body.username
-    }).exec((err, user) => {
-      if (err) {
-        res.status(500).send({ message: err });
-        return;
-      }
-  
-      if (user) {
-        res.status(400).send({ message: "Failed! Username is already in use!" });
-        return;
-      }
-  
-      // Email
-      User.findOne({
-        email: req.body.email
-      }).exec((err, user) => {
-        if (err) {
-          res.status(500).send({ message: err });
-          return;
-        }
-  
-        if (user) {
-          res.status(400).send({ message: "Failed! Email is already in use!" });
-          return;
-        }
-        next();
-      });
-    });
-  };
+const checkDuplicateUsernameOrEmail = async (req, res, next) => {
+    const isDuplicateUsername = await User.usernameExists(req.body.username)
+    if(isDuplicateUsername){
+      return res.status(500).send({ "message": "duplicateUsername" })
+    }
+    const isDuplicateMail = await User.emailExists(req.body.email)
+    if(isDuplicateMail){
+      return res.status(500).send({ "message": "duplicateMail" })
+    }
+    next()
+};
 
 module.exports = {checkSignUpData, checkDuplicateUsernameOrEmail, checkLogInData}

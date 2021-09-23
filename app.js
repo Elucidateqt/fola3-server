@@ -2,17 +2,41 @@ require('dotenv').config()
 const express = require('express')
 const app = express()
 const cors = require('cors')
-const db = require('./models')
-const userRoute = require('./routes/users')
-const authRoute = require("./routes/auth")
-const projectRoute = require('./routes/projects')
-const authController = require('./controllers/auth')
 const Port = process.env.PORT || 8081
 const SuperAdminName = process.env.ADMIN_ACC_USERNAME
 const SuperAdminPw = process.env.ADMIN_ACC_PW
 const SuperAdminMail = process.env.ADMIN_MAIL
 const http = require('http')
 
+const registry = require('./lib/registry')
+const winston = require('winston')
+const console = new winston.transports.Console()
+
+const logger = winston.createLogger({
+    level: 'debug',
+    transports: [
+        console
+    ],
+    exceptionHandlers: [
+        console
+    ]
+  })
+
+registry.registerLogger(logger)
+let myLogger = registry.getService('logger').child({ component: 'app'})
+const httpEvents = registry.createEventChannel('http')
+
+/*httpEvents.on('httpRequestReceived', (method, url, params, body, timestamp) => {
+    myLogger.log('info', `HTTP Event received: ${method}, ${url}, params: ${params}, body: ${body}, timestamp: ${timestamp}`)
+})*/
+
+//routes and db after logger-creation, so they can load it
+const authRoute = require("./routes/auth")
+const userRoute = require('./routes/users')
+const projectRoute = require('./routes/projects')
+const surveyRoute = require('./routes/surveys')
+
+const db = require('./models')
 db.mongoose
     .connect('mongodb://localhost/kano-surveyer', {
         useNewUrlParser: true,
@@ -20,62 +44,42 @@ db.mongoose
         useCreateIndex: true
     })
     .then(()=> {
-        console.log("Successfully connected to mongoDB.")
-        initializeDB()    
+        myLogger.log('info', 'Successfully connected to mongoDB.')
+        db.initialize(SuperAdminName, SuperAdminMail, SuperAdminPw)   
     })
     .catch((err) => {
-        console.error("Error connecting to MongoDB", err)
+        myLogger.log('error', `Error connecting to MongoDB: \n ${err}`)
         process.exit()
     })
 
-const Role = db.role
-const User = db.user
-const ProjectRole = db.projectRole
 
 app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 
+const fireHttpEvent = (req, res, next) => {
+    const method = req.method
+    const url = req.url
+    const timestamp = new Date()
+    const body = req.body
+    const params = req.params
+    httpEvents.emit('httpRequestReceived', method, url, params, body, timestamp)
+    myLogger.log('http', `request received: method: ${method} url: ${url} timestamp: ${timestamp}`)
+    next()
+}
+app.use(fireHttpEvent)
+
 
 app.get('/health', function (req, res) {
-    res.send();
+    res.sendStatus(204);
 })
 
 app.use("/auth", authRoute)
 app.use("/users", userRoute)
 app.use("/projects", projectRoute)
+app.use("/surveys", surveyRoute)
 
 server = http.createServer(app)
 server.listen(Port, () => {
-    console.log(`Server running on Port ${Port}`)
+    myLogger.log('info', `Server running on Port ${Port}`)
 })
-
-
-function initializeDB() {
-    //check if site wide roles exist in db and add them otherwise
-    Role.estimatedDocumentCount((err, count) => {
-      if (!err && count === 0) {
-        db.ROLES.forEach(roleName => {
-            new Role({
-                name: roleName
-            }).save(err => {
-                if(err){
-                    console.error(`Error creating Role "${roleName}" during DB-Init: ${err}`)
-                }
-                console.log(`Added role ${roleName} to roles collection.`)
-            })
-        })
-      }
-    });
-    //check if any Users exist and add super admin otherwise
-    User.estimatedDocumentCount((err, count) => {
-        if(!err && count === 0){
-            authController.createUser(SuperAdminName, SuperAdminMail, SuperAdminPw, 'super admin', (err, user) => {
-                if(err){
-                    console.error('Error creating Super Admin during DB-Init.')
-                }
-                console.log('Successfully created Super Admin account.')
-            })
-        }
-    })
-  }

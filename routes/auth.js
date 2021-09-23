@@ -1,9 +1,11 @@
 const express = require('express')
 const router = express.Router()
 const db = require('../models')
-const {authWare, userWare} = require('../middleware')
+const middleware = require('../middleware')
+const authWare = middleware.auth
+const userWare = middleware.user
 const controller = require('../controllers/auth')
-
+const userController = require('../controllers/users')
 
 router.post('/signup', userWare.checkSignUpData, userWare.checkDuplicateUsernameOrEmail, controller.signUp)
 

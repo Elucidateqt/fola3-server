@@ -1,4 +1,6 @@
-const authWare = require('./auth')
-const userWare = require('./user')
+const middleware = {}
+middleware.auth = require('./auth')
+middleware.user= require('./user')
+middleware.project = require('./projects')
 
-module.exports = {authWare, userWare}
+module.exports = middleware

@@ -1,216 +1,109 @@
 db = require('../models')
 const { v4: uuidv4 } = require('uuid')
+const helpers = require('../lib/helpers')
 const User = db.user
 const Project = db.project
+const registry = require('../lib/registry')
+const logger = registry.getService('logger').child({ component: 'projectController' })
 
-exports.createProject = (req, res) => {
+exports.createProject = async (req, res) => {
     let projectName = req.body.projectName || 'New Project',
         projectDescription = req.body.description || 'Description missing'
-    User.findOne({
-        uuid: req.user.uuid
-    })
-    .exec((err, user) => {
-        if(err){
-            res.status(500).send({ message: err })
-            return
+    try{
+        const user = await User.getUserByUuid(req.user.uuid)
+        if(!user){
+            return res.status(500).send({ "message": "UserNotFound" })
         }
-        const project = new Project({
-            uuid: uuidv4(),
-            name: projectName,
-            description: projectDescription,
-            members: [{user: user._id, role: 'admin'}]
-        });
-        project.save(err => {
-            if (err) {
-                res.status(500).send({ message: err })
-                return
-            }
-            res.send({message: 'Project created successfully.'})
-        });
-    })
+        const project = await Project.createProject(uuidv4(), projectName, projectDescription, user._id)
+        delete project._id
+        project.members[0].uuid = req.user.uuid
+        project.members[0].username = req.user.username
+        logger.log('info', `Project with uuid ${project.uuid} created by user ${req.user.uuid}`)
+        return res.status(200).send({ "message": "projectCreated", "project": project})
+    }catch(err){
+        logger.log('error', err)
+        return res.status(500).send({ "message": err })
+    }
 }
 
-exports.deleteProject = (req, res) => {
-    Project.deleteOne({uuid: req.params.projectId})
-    .exec((err, result) => {
-        if(err){
-            return res.status(500).send({ message: err })
+exports.deleteProject = async (req, res) => {
+    try{
+        if(!helpers.isValidUuid(req.params.projectId)){
+            return res.status(400).send({ "message": "projectUuidInvalid" })
         }
-        console.log(`[Project Controller]: ${req.user.uuid} deleted project ${req.params.projectId}.`)
-        res.sendStatus(200)
-    })
+        await Project.deleteProject(req.params.projectId)
+        logger.log('error', `Deleted project ${req.params.projectId} from DB`)
+        return res.sendStatus(200)
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
+    }
 }
 
-exports.getMultipleProjects = (req, res) => {
-    User.findOne({
-        uuid: req.user.uuid
-    })
-    .populate('role', 'name')
-    .exec((err, user) => {
-        if(err){
-            return res.status(500).send({message: err})
-        }
-        if(user.role.name === 'super admin' || user.role.name === 'admin'){
-            Project.aggregate([
-                {$match: {} },
-                {$unwind: '$members'},
-                {$lookup: {
-                    from: 'users',
-                    localField: 'members.user',
-                    foreignField: '_id',
-                    as: 'members.user'
-                }},
-                {$unwind: '$members.user'},
-                {$group: {
-                    "_id": "$_id",
-                    "uuid": { "$first": "$uuid" },
-                    "name": { "$first": "$name" },
-                    "description": { "$first": "$description" },
-                    "members": {
-                        "$push": {
-                            "uuid": "$members.user.uuid",
-                            "email": "$members.user.email",
-                            "username": "$members.user.username",
-                            "role": "$members.role"
-                        }
-                    }
-                }},
-                {$project: {
-                    "_id": 0
-                }}
-            ])
-            .exec((err, projectList) => {
-                if(err){
-                    console.log('aggregation error', err)
-                    return res.status(500).send({message: err})
-                }
-                console.log("aggregated", projectList)
-                res.send({projects: projectList})
-            })
+exports.getMultipleProjects = async (req, res) => {
+    try{
+        if(req.user.role === db.ROLES.SUPER_ADMIN || req.user.role === db.ROLES.ADMIN){
+            const projectList = await Project.getAllProjects()
+            logger.log('info', `Loaded all projects from DB`)
+            return res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
         }else{
-            User.findOne({
-                uuid: req.user.uuid
-            }).exec((err, user) => {
-                if(err){
-                    return res.status(500).send({ "message": err })
-                }
-                Project.aggregate([
-                    {$match: {"members": { "$elemMatch": {user: user._id}}} },
-                    {$unwind: '$members'},
-                    {$lookup: {
-                        from: 'users',
-                        localField: 'members.user',
-                        foreignField: '_id',
-                        as: 'members.user'
-                    }},
-                    {$unwind: '$members.user'},
-                    {$group: {
-                        "_id": "$_id",
-                        "uuid": { "$first": "$uuid" },
-                        "name": { "$first": "$name" },
-                        "description": { "$first": "$description" },
-                        "members": {
-                            "$push": {
-                                "uuid": "$members.user.uuid",
-                                "email": "$members.user.email",
-                                "username": "$members.user.username",
-                                "role": "$members.role"
-                            }
-                        }
-                    }},
-                    {$project: {
-                        "_id": 0
-                    }}
-                ])
-                .exec((err, projectList) => {
-                    if(err){
-                        console.log('aggregation error', err)
-                        return res.status(500).send({message: err})
-                    }
-                    console.log("aggregated user specific", projectList[0].members.role)
-                    res.send({projects: projectList})
-                })
-            })
+            const user = await User.getUserByUuid(req.user.uuid)
+            const projectList = await Project.getAllProjectsWithUser(user._id)
+            logger.log('info', `Loaded multiple projects from DB.`)
+            return res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
         }
-
-    })
-}
-
-exports.getProject = (req, res) => {
-    Project.aggregate([
-        {$match: {uuid: req.params.projectId} },
-        {$unwind: '$members'},
-        {$match: { 'members.user': req.user._id}},
-        {$lookup: {
-            from: 'users',
-            localField: 'members.user',
-            foreignField: '_id',
-            as: 'members.user'
-        }},
-        {$unwind: '$members.user'},
-        {$project: {
-            "_id": 0,
-            "__v": 0,
-            "members._id": 0,
-            "members.role": 0,
-            "members.user._id": 0,
-            "members.user.password": 0,
-            "members.user.role": 0,
-            "members.user.__v": 0,
-            "members.user.projectrole._id": 0,
-            "members.user.projectrole.__v": 0
-        }}
-    ])
-    .exec((err, project) => {
-        if(err){
-            return res.status(500).send({message: err})
-        }
-        res.send({project: project})
-    })
-}
-
-exports.setProjectDescription = (req, res) => {
-    if(req.body.description){
-        Project.updateOne({
-            uuid: req.params.projectId
-        },
-        [
-            {$set: {description: req.body.description}}
-        ],
-        {upsert: false})
-        .exec((err, result) => {
-            if(err){
-                return res.status(500).send({message: err})
-            }
-            res.sendStatus(200)
-        })
-    }else{
-        res.sendStatus(401)
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
     }
 }
 
-exports.setProjectName = (req, res) => {
-    if(req.body.name){
-        Project.updateOne({
-            uuid: req.params.projectId
-        },
-        [
-            {$set: {name: req.body.name}}
-        ],
-        {upsert: false})
-        .exec((err, result) => {
-            if(err){
-                return res.status(500).send({message: err})
-            }
+exports.getProject = async (req, res) => {
+    try{
+        const project = await Project.getProjectByUuid(req.params.projectId)
+        if(!project){
+            return res.sendStatus(404)
+        }
+        logger.log('info', `lodaded Project ${project.uuid} from DB`)
+        return res.status(200).send({ "message": "projectLoaded", "project": project})   
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
+    }
+}
+
+exports.setProjectDescription = async (req, res) => {
+    if(req.body.description && typeof(req.body.description === 'string') && req.body.description.length <= 156){
+        try{
+            await Project.updateProjectDescription(req.params.projectId, req.body.description)
+            logger.log('info', `updated description of project ${req.params.projectId}`)
             res.sendStatus(200)
-        })
+        }catch(err){
+            logger.log('error', err)
+            res.sendStatus(500)
+        }
     }else{
-        res.sendStatus(401)
+        res.sendStatus(400)
+    }
+}
+
+exports.setProjectName = async (req, res) => {
+    if(req.body.name && typeof(req.body.name === 'string') && req.body.name.length <= 40){
+        try{
+            await Project.updateProjectName(req.params.projectId, req.body.name)
+            logger.log('info', `Updated description of project ${req.params.projectId}`)
+            res.sendStatus(200)
+        }catch(err){
+            logger.log('error', err)
+            res.sendStatus(500)
+        }
+    }else{
+        res.sendStatus(400)
     }
 
 }
 
-exports.addMembers = (req, res) => {
+exports.addMembers = async (req, res) => {
     if(req.body.users){
         let uniqueMembers = {},
             emailList = [],
@@ -223,82 +116,64 @@ exports.addMembers = (req, res) => {
                 emailList.push(user.email)
             }
         })
-        //first make sure, we don't add any duplicates
-        Project.aggregate([
-            {"$match":  { "uuid": req.params.projectId}},
-            {"$unwind": "$members"},
-            {"$lookup": {
-                from: 'users',
-                localField: 'members.user',
-                foreignField: '_id',
-                as: 'members.user'
-            }},
-            {"$group": {
-                "_id": "$_id",
-                "members": {
-                    "$push": "$members.user.email"
-                }
-            }}
-        ])
-        .exec((err, projects) => {
-            if(err){
-                console.error("error getting project members: ", err)
-                return res.status(500).send({ "message": err })
+        try{
+            const currMembers = await Project.getUsersInProject(req.params.projectId)
+            //filter all users out that already are members
+            emailList = emailList.filter(email => !currMembers.some(member => member.email === email))
+            const newMembers = await User.getUsersByEmail(emailList)
+            if(newMembers.length === 0){
+                //maybe some special response in the future?
             }
-            let currMembers = projects[0].members.flat()
-            console.log("current memebers", currMembers)
-            emailList = emailList.filter(email => !currMembers.includes(email))
-
-            //get object-IDs of users and add them to members-array
-            User.find({
-                email: {$in: emailList}
-            })
-            .exec((err, users) => {
-                if(err){
-                    console.log("error loading players to add to project:", err)
-                    return res.status(500).send({message: err})
-                }
-                users.forEach(user => insertSet.push({user: user._id, role: uniqueMembers[user.email].role}))
-                Project.updateOne({uuid: req.params.projectId},
-                    {$push: {members: {$each: insertSet}}}
-                )
-                .exec((err, result) => {
-                    if(err){
-                        return res.status(500).send({message: err})
-                    }
-                    res.sendStatus(200)
-                })
-            })
-        })
+            newMembers.forEach(user => insertSet.push({user: user._id, role: uniqueMembers[user.email].role}))
+            await Project.addMembersToProject(req.params.projectId, insertSet)
+            logger.log('info', `Added ${newMembers.length} users to project ${req.params.projectId}`)
+            return res.status(200).send({ "message": "membersAdded" })
+        }catch(err){
+            logger.log('error', err)
+            return res.sendStatus(500)
+        }
     }else{
-        return res.sendStatus(401)
+        return res.sendStatus(400)
     }
 }
 
-exports.removeMemembers = (req, res) => {
+exports.removeMemembers = async (req, res) => {
     if(req.body.users){
+        //admin can't delete themselves to guarantee atleast 1 admin per project
+        if(req.body.users.some(email => email === req.user.email)){
+            logger.log('warn', `User ${req.user.uuid} tried to remove himself from project ${req.params.projectId}`)
+            return res.status(400).send({ "message": "cantDeleteSelf" })
+        }
         //get user IDs, remove from array with $pull $in
         let userIds = []
-        User.find({
-            email: {$in: req.body.users}
-        })
-        .exec((err, users) => {
-            if(err){
-                return res.status(500).send({message: err})
-            }
-            users.forEach(user => userIds.push(user._id))
-            Project.updateOne({
-                uuid: req.params.projectId
-            },
-            {$pull: {"members": {"user": {$in: userIds}}}})
-            .exec((err, result) => {
-                if(err){
-                    return res.status(500).send({message: err})
-                }
-                res.sendStatus(200)
-            })
-        })
+        const users = await User.getUsersByEmail(req.body.users)
+        users.forEach(user => userIds.push(user._id))
+        await Project.removeMembersFromProject(req.params.projectId, userIds)
+        logger.log('info', `removed ${userIds.length} members from project ${req.params.projectId}`)
+        return res.sendStatus(204)
     }else{
-        return res.sendStatus(401)
+        logger.log('warn', `no users in request-body to remove from project ${req.params.projectId}`)
+        return res.sendStatus(400)
+    }
+}
+
+exports.leaveProject = async (req, res) => {
+    try{
+        const project = await Project.getProjectByUuid(req.params.projectId)
+        if(!project){
+            return res.status(404).send({ "message": "projectNotFound" })
+        }
+        //reject if the project would be left without any admins
+        if(project.members.filter(user => user.role === "admin" && user.uuid != req.user.uuid).length === 0){
+            logger.log('warn', `User ${req.user.uuid} not permitted to leave. Last admin left`)
+            return res.status(405).send({ "message": "lastAdminLeft" })
+        }
+        const user = await User.getUserByUuid(req.user.uuid)
+        await Project.removeMembersFromProject(req.params.projectId, [ user._id ])
+        logger.log('info', `User ${req.user.uuid} left project ${req.params.projectId}`)
+        return res.sendStatus(200)
+    }catch(err){
+        logger.log('error', err)
+        return res.sendStatus(500)
     }
 }

@@ -13,138 +13,16 @@ exports.authenticateToken = (req, res, next) => {
         if(err){
             return res.sendStatus(403)
         }
-        User.findOne({
-          uuid: user.uuid
-        })
-        .populate('role', 'name')
-        .exec((err, user) => {
-          if(err){
-            res.status(500).send({message: err})
-          }
-          req.user = user
-          return next()
-        })
+        req.user = user
+        next()
     })
 }
 
-exports.isSuperAdmin = (req, res, next) => {
-    User.findOne({
-      uuid: req.user.uuid})
-      .exec((err, user) => {
-        if (err) {
-          res.status(500).send({ message: err });
-          return;
-        }
-    
-        Role.find(
-          {
-            _id: { $eq: user.role }
-          },
-          (err, role) => {
-            if (err) {
-              res.status(500).send({ message: err });
-              return;
-            }
-    
-            if(role.name === 'super admin'){
-                next()
-                return
-            }
-    
-            res.status(403).send({ message: "Require Super Admin Role!" });
-            return
-          }
-        );
-    });
-}
-
-exports.isAdmin = (req, res, next) => {
-  User.findOne({
-    uuid: req.user.uuid})
-    .exec((err, user) => {
-      if (err) {
-        res.status(500).send({ message: err });
-        return;
-      }
-  
-      Role.find(
-        {
-          _id: { $eq: user.role }
-        },
-        (err, role) => {
-          if (err) {
-            res.status(500).send({ message: err });
-            return;
-          }
-  
-          if(role.name === 'admin'){
-              next()
-              return
-          }
-  
-          res.status(403).send({ message: "Require Admin Role!" });
-          return
-        }
-      );
-    });
-}
-
-exports.isModerator = (req, res, next) => {
-  User.findOne({
-    uuid: req.user.uuid})
-    .exec((err, user) => {
-      if (err) {
-        res.status(500).send({ message: err });
-        return;
-      }
-  
-      Role.find(
-        {
-          _id: { $eq: user.role }
-        },
-        (err, role) => {
-          if (err) {
-            res.status(500).send({ message: err });
-            return;
-          }
-  
-          if(role.name === 'moderator'){
-              next()
-              return
-          }
-  
-          res.status(403).send({ message: "Require Moderator Role!" });
-          return
-        }
-      );
-    });
-}
-
-exports.isAtleastModerator = (req, res, next) => {
-  User.findOne({
-    uuid: req.user.uuid})
-    .exec((err, user) => {
-      if (err) {
-        res.status(500).send({ message: err });
-        return;
-      }
-  
-      Role.findOne(
-        {
-          _id: { $eq: user.role }
-        },
-        (err, role) => {
-          if (err) {
-            res.status(500).send({ message: err });
-            return;
-          }
-          if(role.name === 'moderator' || role.name === 'admin' || role.name === 'super admin'){
-            next()
-            return
-          }
-          res.status(403).send({ message: "Required atleast Moderator Permissions!" });
-          return
-        }
-      );
-    });
+exports.authenticateRoles = (rolenames) => {
+  return (req,res,next) => {
+    if(!rolenames.some(rolename => rolename === req.user.role)){
+      return res.sendStatus(401)
+    }
+    next()
+  }
 }
