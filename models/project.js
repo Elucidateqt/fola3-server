@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const db = require('.');
 
 const Project = new mongoose.model(
     "Project",
@@ -16,28 +17,25 @@ const Project = new mongoose.model(
             {
                 user: {
                     type: mongoose.Schema.Types.ObjectId,
-                    ref: "User"
+                    ref: "User",
                 },
-                role: {
-                    type: String,
-                    required: true
-                }
+                roles: [{
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Role"
+                }]
             }
-        ],
-        surveys: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Survey"
-        }]
+        ]
     })
 )
 
-const createProject = async (uuid, name, description, creatorId) => {
+const createProject = async (uuid, name, description, creatorId, creatorRoleIds) => {
     try{
+        console.log("creatorRoleIds: ", creatorRoleIds)
         const project = await new Project({
             "uuid": uuid,
             "name": name,
             "description": description,
-            "members": [{user: creatorId, role: 'admin'}]
+            "members": [{user: creatorId, roles: creatorRoleIds }]
         }).save();
         //TODO: emit event
         return {
@@ -45,14 +43,15 @@ const createProject = async (uuid, name, description, creatorId) => {
             "uuid" : project.uuid,
             "name" : project.name,
             "description" : project.description,
-            "members": [{"uuid": creatorId, "role": "admin"}]
+            "members": [{"uuid": creatorId, "roles": creatorRoleIds }]
         }
     }catch(err){
-        throw new Error("Error creating project in DB")
+        throw new Error(`Error creating project in DB: ${err}`)
     }
 
 }
 
+//TODO: finish this
 const getProjectByUuid = async (uuid) => {
     try{
         const result  = await Project.aggregate([
@@ -65,7 +64,14 @@ const getProjectByUuid = async (uuid) => {
                 as: 'members.user'
             }},
             {$unwind: '$members.user'},
-            {$group: {
+            {$unwind: '$members.roles'},
+            {$lookup: {
+                from: 'roles',
+                localField: 'members.roles',
+                foreignField: '_id',
+                as: 'members.roles'
+            }},
+            /*{$group: {
                 "_id": "$_id",
                 "uuid": { "$first": "$uuid" },
                 "name": { "$first": "$name" },
@@ -75,10 +81,10 @@ const getProjectByUuid = async (uuid) => {
                         "uuid": "$members.user.uuid",
                         "email": "$members.user.email",
                         "username": "$members.user.username",
-                        "role": "$members.role"
+                        "roles": {"$push" : "$members.roles.name" }
                     }
                 }
-            }}
+            }}*/
         ]).exec()
         if(result.length === 0){
             return null
@@ -225,33 +231,32 @@ const removeMembersFromProject = async (projectUuid, memberIds) => {
 
 const hasUserRoleInProject = async (userUuid, projectUuid) => {
     try{
-        
+        const results = await Project.aggregate([
+            { $match: { "uuid": projectUuid } },
+            { $unwind: '$members'},
+            {$lookup: {
+                from: 'users',
+                localField: 'members.user',
+                foreignField: '_id',
+                as: 'members.user'
+            }},
+            {$group: {
+                "_id": "$_id",
+                "members": {
+                    "$push": {
+                        "uuid": "$members.user.uuid",
+                        "email": "$members.user.email",
+                        "username": "$members.user.username",
+                        "role": "$members.role"
+                    }
+                }
+            }},
+            {$match: {members: {$elemMatch: {uuid: userUuid}}}}
+        ]).exec()   
+        return results.length > 0
     }catch(err){
         throw new Error(`Error checking ProjectRole for user-id ${uuid} in Project ${projectUuid}`)
     }
-    const results = await Project.aggregate([
-        { $match: { "uuid": projectUuid } },
-        { $unwind: '$members'},
-        {$lookup: {
-            from: 'users',
-            localField: 'members.user',
-            foreignField: '_id',
-            as: 'members.user'
-        }},
-        {$group: {
-            "_id": "$_id",
-            "members": {
-                "$push": {
-                    "uuid": "$members.user.uuid",
-                    "email": "$members.user.email",
-                    "username": "$members.user.username",
-                    "role": "$members.role"
-                }
-            }
-        }},
-        {$match: {members: {$elemMatch: {uuid: userUuid}}}}
-    ]).exec()
-    return results.length > 0
 }
 
 const getUsersInProject = async (uuid)  => {

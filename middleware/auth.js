@@ -1,7 +1,7 @@
 const express = require('express')
 const jwt = require('jsonwebtoken')
 const db = require('../models')
-const User = db.user
+const Project = db.project
 const Role = db.role
 
 exports.authenticateToken = (req, res, next) => {
@@ -18,11 +18,22 @@ exports.authenticateToken = (req, res, next) => {
     })
 }
 
-exports.authenticateRoles = (rolenames) => {
-  return (req,res,next) => {
-    if(!rolenames.some(rolename => rolename === req.user.role)){
-      return res.sendStatus(401)
+exports.authenticatePermissions = (permissions) => {
+  return async (req,res,next) => {
+    //TODO: user has no projectRoles with permission "PROJECTS:MANAGE" in addMember route. Edit projectcontroller.getProject first to give new token to user with projectroles
+    if(await Role.rolesContainPermissions(req.user.roles.concat(req.user.projectRoles), permissions)){
+      return next()
     }
-    next()
+    return res.sendStatus(401)
   }
 }
+
+/*This function implements the rule "Users can only grant projectroles that they own themselves"- might be useful in the future
+exports.canUserGrantRole = (res, req, next) => {
+  let targetRoles = []
+  req.body.user.forEach(user => targetRoles = targetRoles.concat(user.roles))
+  if(targetRoles.every(targetRole => req.user.projectRoles.includes(targetRole))){
+    return next()
+  }
+  return res.status(401).send({ "message": "roleGrantDenied" })
+}*/

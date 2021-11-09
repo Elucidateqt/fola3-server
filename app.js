@@ -9,11 +9,16 @@ const SuperAdminMail = process.env.ADMIN_MAIL
 const http = require('http')
 
 const registry = require('./lib/registry')
-const winston = require('winston')
-const console = new winston.transports.Console()
+const { createLogger, format, transports } = require('winston');
+const { combine, timestamp, prettyPrint } = format;
+const console = new transports.Console()
 
-const logger = winston.createLogger({
+const logger = createLogger({
     level: 'debug',
+    format: combine(
+        timestamp(),
+        prettyPrint()
+    ),
     transports: [
         console
     ],
@@ -57,6 +62,8 @@ app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 
+
+//TODO: just for testing. remove
 const fireHttpEvent = (req, res, next) => {
     const method = req.method
     const url = req.url

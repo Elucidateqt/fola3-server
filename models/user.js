@@ -1,4 +1,6 @@
 const mongoose = require('mongoose')
+const registry = require('../lib/registry')
+const logger = registry.getService('logger').child({ "component": "UserModel" })
 
 
 const User = mongoose.model(
@@ -20,22 +22,21 @@ const User = mongoose.model(
             type: String,
             required: true
         },
-        role: {
+        roles: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: "Role"
-        }
+        }]
     })
 )
 
-const createUser = async (uuid, username, email, passHash, roleId) => {
-    console.log(`uuid: ${uuid} \n username: ${username} \n email: ${email} \n passhash: ${passHash} \n roleId: ${roleId}`)
+const createUser = async (uuid, username, email, passHash, roleIds) => {
     try {
         const user = await new User({
             "uuid": uuid,
             "username": username,
             "email": email,
             "password": passHash,
-            "role": roleId
+            "roles": roleIds
         }).save()
         return {
             "uuid": user.uuid,
@@ -60,16 +61,19 @@ const getUserCount = async () => {
 
 const getAllUsers = async () => {
     try{
-        const users = await User.find().populate("role").exec()
-        users.forEach(user => {
+        let users = []
+        const result = await User.find().populate("roles").exec()
+        result.forEach(user => {
+            let roleNames = []
+            user.roles.map(role => roleNames.push(role.name))
             user = {
                 "uuid" : user.uuid,
                 "username": user.username,
                 "email": user.email,
-                "role": user.role
+                "roles": roleNames
             }
+            users.push(user)
         })
-        console.log("users loaded", users)
         return users
     }catch(err){
         throw new Error(`Error loading all users from DB: ${err}`)
@@ -79,13 +83,15 @@ const getAllUsers = async () => {
 const getUserByUuid = async (uuid) => {
     try{
         const result = await User.findOne({ "uuid": uuid }).populate("role").exec()
+        let roleNames = []
+        result.roles.map(role => roleNames.push(role.name))
         const user = {
             "_id" : result._id,
             "uuid" : result.uuid,
             "username": result.username,
             "email": result.email,
             "password": result.password,
-            "role": result.role.name
+            "roles": roleNames
         }
         return user
     }catch(err){
@@ -95,7 +101,7 @@ const getUserByUuid = async (uuid) => {
 
 const getUserByEmail = async (email) => {
     try{
-        const result = await User.findOne({ "email": email }).populate("role").exec()
+        const result = await User.findOne({ "email": email }).populate("roles").exec()
         if(!result){
             return null
         }
@@ -105,7 +111,7 @@ const getUserByEmail = async (email) => {
                 "username": result.username,
                 "email": result.email,
                 "password": result.password,
-                "role": result.role
+                "roles": result.roles
         }
         return user
     }catch(err){
@@ -121,18 +127,41 @@ const getUsersByEmail = async (emailList) => {
         }
         let users = []
         result.forEach(el => {
+            let roleNames = []
+            el.roles.map(role => roleNames.push(role.name))
             users.push({
                 "_id" : el._id,
                 "uuid" : el.uuid,
                 "username": el.username,
                 "email": el.email,
                 "password": el.password,
-                "role": el.role
+                "roles": roleNames
             })
         })
         return users
     }catch(err){
         throw new Error(`Error loading User with email ${email} from DB: ${err}`)
+    }
+}
+
+const updateUser = async (uuid, username, email, passHash, roleIds) => {
+    try{
+        await User.findOneAndUpdate({"uuid": uuid},{
+            "username": username,
+            "email": email,
+            "password": passHash,
+            "roles": roleIds
+        })
+    }catch(err){
+        throw new Error(`Error in models.user.updateUser: \n ${err}`)
+    }
+}
+
+const deleteUser = async (uuid) => {
+    try{
+        await User.findOneAndDelete({"uuid": uuid})
+    }catch(err){
+        throw new Error(`Error in models.user.deleteUser: \n ${err}`)
     }
 }
 
@@ -154,5 +183,57 @@ const emailExists = async (email) => {
     }
 }
 
-//TODO: remove user, once dependencies are resolved
-module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByEmail, getUserCount, createUser, usernameExists, emailExists }
+const giveUserMultipleRoles = async (userUuid, roleIds) => {
+    try{
+        //only give users the role if they don't have it yet
+        let unownedRoles = []
+        const user = await User.findOne(
+            {"uuid": userUuid}).exec()
+        await Promise.all(roleIds.map(async (id) => {
+            if(!user.roles.includes(id)){
+                unownedRoles.push(id)
+            }
+        }))
+        if(unownedRoles.length > 0){
+            User.updateOne({"uuid": userUuid},
+            {$push: {"roles": {$each: unownedRoles}}}
+            ).exec()
+        }
+    }catch(err){
+        logger.log("error", err)
+        res.sendStatus(500)
+    }
+}
+
+const getUsersWithRole = async (rolename) => {
+    try{
+        const result  = await User.aggregate([
+            {$match: {} },
+            {$unwind: '$roles'},
+            {$lookup: {
+                from: 'roles',
+                localField: 'roles',
+                foreignField: '_id',
+                as: 'roles'
+            }},
+            {$unwind: '$roles'},
+            {$group: {
+                "_id": "$_id",
+                "uuid": { "$first": "$uuid" },
+                "name": { "$first": "$name" },
+                "email": { "$first": "$email" },
+                "roles": {
+                    "$push": "$roles.name"
+                }
+            }}
+        ]).exec()
+        if(result.length === 0){
+            return null
+        }
+        return result
+    }catch(err){
+        throw new Error(`Error loading users with role ${rolename} from DB: \n ${err}`)
+    }
+}
+
+module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByEmail, deleteUser, getUserCount, createUser, updateUser, giveUserMultipleRoles, getUsersWithRole, usernameExists, emailExists }

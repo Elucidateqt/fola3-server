@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid')
 const helpers = require('../lib/helpers')
 const User = db.user
 const Project = db.project
+const Role = db.role
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'projectController' })
 
@@ -14,10 +15,18 @@ exports.createProject = async (req, res) => {
         if(!user){
             return res.status(500).send({ "message": "UserNotFound" })
         }
-        const project = await Project.createProject(uuidv4(), projectName, projectDescription, user._id)
+        const roles = await Role.getProjectCreatorRoles()
+        const roleNames = []
+        const roleIds = []
+        roles.forEach((role) => {
+            roleIds.push(role._id)
+            roleNames.push(role.name)
+        })
+        const project = await Project.createProject(uuidv4(), projectName, projectDescription, user._id, roleIds)
         delete project._id
         project.members[0].uuid = req.user.uuid
         project.members[0].username = req.user.username
+        project.members[0].roles = roleNames
         logger.log('info', `Project with uuid ${project.uuid} created by user ${req.user.uuid}`)
         return res.status(200).send({ "message": "projectCreated", "project": project})
     }catch(err){
@@ -28,9 +37,6 @@ exports.createProject = async (req, res) => {
 
 exports.deleteProject = async (req, res) => {
     try{
-        if(!helpers.isValidUuid(req.params.projectId)){
-            return res.status(400).send({ "message": "projectUuidInvalid" })
-        }
         await Project.deleteProject(req.params.projectId)
         logger.log('error', `Deleted project ${req.params.projectId} from DB`)
         return res.sendStatus(200)
@@ -40,18 +46,23 @@ exports.deleteProject = async (req, res) => {
     }
 }
 
-exports.getMultipleProjects = async (req, res) => {
+exports.getAllProjects = async (req, res) => {
     try{
-        if(req.user.role === db.ROLES.SUPER_ADMIN || req.user.role === db.ROLES.ADMIN){
-            const projectList = await Project.getAllProjects()
-            logger.log('info', `Loaded all projects from DB`)
-            return res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
-        }else{
-            const user = await User.getUserByUuid(req.user.uuid)
-            const projectList = await Project.getAllProjectsWithUser(user._id)
-            logger.log('info', `Loaded multiple projects from DB.`)
-            return res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
-        }
+        const projectList = await Project.getAllProjects()
+        logger.log('info', `Loaded all projects from DB`)
+        return res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
+    }
+}
+
+exports.getProjectsWithUser = async (req, res) => {
+    try{
+        const user = await User.getUserByUuid(req.user.uuid)
+        const projectList = await Project.getAllProjectsWithUser(user._id)
+        logger.log('info', `Loaded projects with User ${req.user.uuid} from DB.`)
+        return res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
@@ -112,7 +123,7 @@ exports.addMembers = async (req, res) => {
         req.body.users.forEach(user => {
             if(!uniqueMembers.hasOwnProperty(user.email)){
                 uniqueMembers[user.email] = {}
-                uniqueMembers[user.email].role = user.role
+                uniqueMembers[user.email].projectroles = user.roles
                 emailList.push(user.email)
             }
         })
@@ -124,7 +135,7 @@ exports.addMembers = async (req, res) => {
             if(newMembers.length === 0){
                 //maybe some special response in the future?
             }
-            newMembers.forEach(user => insertSet.push({user: user._id, role: uniqueMembers[user.email].role}))
+            newMembers.forEach(user => insertSet.push({user: user._id, roles: uniqueMembers[user.email].projectroles}))
             await Project.addMembersToProject(req.params.projectId, insertSet)
             logger.log('info', `Added ${newMembers.length} users to project ${req.params.projectId}`)
             return res.status(200).send({ "message": "membersAdded" })

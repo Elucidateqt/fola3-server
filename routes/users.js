@@ -4,10 +4,14 @@ const middleware = require('../middleware')
 const authWare =  middleware.auth
 const userWare =  middleware.user
 const controller  = require('../controllers/users')
-const db = require('../models')
 
-router.post('/', authWare.authenticateToken, authWare.authenticateRoles([ db.ROLES.ADMIN, db.ROLES.SUPER_ADMIN ]), userWare.checkSignUpData, userWare.checkDuplicateUsernameOrEmail, controller.createUser)
+router.post('/', authWare.authenticateToken, authWare.authenticatePermissions([ "USERS:CREATE" ]), userWare.checkSignUpData, userWare.checkDuplicateUsernameOrEmail, controller.createUser)
 
-router.get('/', authWare.authenticateToken, authWare.authenticateRoles([ db.ROLES.ADMIN, db.ROLES.SUPER_ADMIN ]), controller.getAllUsers)
+router.put('/:userId', authWare.authenticateToken, authWare.authenticatePermissions([ "USERS:UPDATE" ]), controller.updateUser)
+
+router.get('/', authWare.authenticateToken, authWare.authenticatePermissions([ "USERS:VIEW" ]), controller.getAllUsers)
+
+//TODO: add cascading delete for projects
+router.delete('/:userId', authWare.authenticateToken, authWare.authenticatePermissions([ "USERS:DELETE" ]), controller.deleteUser)
 
 module.exports = router

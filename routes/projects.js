@@ -2,29 +2,28 @@ const express = require('express')
 const router = express.Router()
 const middleware = require('../middleware')
 const authMiddleware = middleware.auth
-const projectWare = middleware.project
+const projectMiddleware = middleware.project
 const controller = require('../controllers/projects')
-const surveyController = require('../controllers/surveys')
 
 
-router.get('/', authMiddleware.authenticateToken, controller.getMultipleProjects)
+router.get('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermissions(['PROJECTS:VIEW']), controller.getAllProjects)
 
-router.get('/:projectId', authMiddleware.authenticateToken, projectWare.isProjectUuidValid, projectWare.canViewProject, controller.getProject)
+router.get('/my', authMiddleware.authenticateToken, controller.getProjectsWithUser)
 
-router.post('/', authMiddleware.authenticateToken, controller.createProject)
+router.get('/:projectId', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, projectMiddleware.canViewProject, controller.getProject)
 
-router.delete('/:projectId', authMiddleware.authenticateToken, projectWare.canUserAdminstrateProject, controller.deleteProject)
+router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermissions([ "PROJECTS:CREATE" ]), controller.createProject)
 
-router.put('/:projectId/description', authMiddleware.authenticateToken, projectWare.isProjectUuidValid, projectWare.canUserAdminstrateProject, controller.setProjectDescription)
+router.delete('/:projectId', authMiddleware.authenticateToken, authMiddleware.authenticatePermissions([ 'PROJECTS:DELETE' ]), controller.deleteProject)
 
-router.put('/:projectId/name', authMiddleware.authenticateToken, projectWare.isProjectUuidValid, projectWare.canUserAdminstrateProject, controller.setProjectName)
+router.put('/:projectId/description', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermissions([ 'PROJECTS:MANAGE' ]), controller.setProjectDescription)
 
-router.post('/:projectId/users', authMiddleware.authenticateToken, projectWare.isProjectUuidValid, projectWare.canUserAdminstrateProject, controller.addMembers)
+router.put('/:projectId/name', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermissions([ 'PROJECTS:MANAGE' ]), controller.setProjectName)
 
-router.delete('/:projectId/users', authMiddleware.authenticateToken, projectWare.isProjectUuidValid, projectWare.canUserAdminstrateProject, controller.removeMemembers)
+router.post('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermissions([ 'PROJECTS:MANAGE' ]), controller.addMembers)
 
-router.delete('/:projectId/users/me', authMiddleware.authenticateToken, projectWare.isProjectUuidValid,  projectWare.isUserInProject, controller.leaveProject )
+router.delete('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermissions([ 'PROJECTS:MANAGE' ]), controller.removeMemembers)
 
-router.post('/:projectId/surveys', authMiddleware.authenticateToken, projectWare.isProjectUuidValid, projectWare.canUserAdminstrateProject, surveyController.createSurvey)
+router.delete('/:projectId/users/me', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid,  projectMiddleware.isUserInProject, controller.leaveProject )
 
 module.exports = router
