@@ -15,7 +15,6 @@ db.permission = require('./permission')
 db.user = require('./user')
 db.role = require('./role')
 db.project = require('./project')
-db.survey = require('./survey')
 db.feature = require('./feature')
 db.ROLES = { "USER": "user", "ADMIN" : "admin", "SUPER_ADMIN" : "super admin"}
 

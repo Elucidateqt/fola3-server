@@ -39,7 +39,6 @@ const httpEvents = registry.createEventChannel('http')
 const authRoute = require("./routes/auth")
 const userRoute = require('./routes/users')
 const projectRoute = require('./routes/projects')
-const surveyRoute = require('./routes/surveys')
 
 const db = require('./models')
 db.mongoose
@@ -84,7 +83,6 @@ app.get('/health', function (req, res) {
 app.use("/auth", authRoute)
 app.use("/users", userRoute)
 app.use("/projects", projectRoute)
-app.use("/surveys", surveyRoute)
 
 server = http.createServer(app)
 server.listen(Port, () => {
