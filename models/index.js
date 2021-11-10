@@ -15,7 +15,6 @@ db.permission = require('./permission')
 db.user = require('./user')
 db.role = require('./role')
 db.project = require('./project')
-db.feature = require('./feature')
 db.ROLES = { "USER": "user", "ADMIN" : "admin", "SUPER_ADMIN" : "super admin"}
 
 const PERMISSIONS = ["USERS:CREATE",  "USERS:VIEW", "USERS:UPDATE", "USERS:DELETE", "PROJECTS:CREATE", "PROJECTS:VIEW", "PROJECTS:MANAGE", "PROJECTS:DELETE", "ROLES:CREATE", "ROLES:GRANT", "ROLES:REVOKE", "ROLES:VIEW", "ROLES:UPDATE", "ROLES:DELETE", "PERMISSIONS:CREATE", "PERMISSIONS:VIEW", "PERMISSIONS:UPDATE", "PERMISSIONS:GRANT", "PERMISSIONS:REVOKE", "PERMISSIONS:DELETE"]
