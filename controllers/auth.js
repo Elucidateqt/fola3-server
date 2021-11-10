@@ -94,7 +94,6 @@ exports.refreshAccessToken = (req, res) => {
     }
 }
 
-//todo: test with normal user if SU gets role
 exports.createRole = async (req, res) => {
     try{
         if(await Role.roleExists(req.body.name)){

@@ -28,6 +28,6 @@ router.get('/permissions/', authWare.authenticateToken, authWare.authenticatePer
 
 router.post('/permissions/', authWare.authenticateToken, authWare.authenticatePermissions([ "PERMISSIONS:CREATE" ]), PermissionController.createPermission)
 
-//router.delete('/permissions/')
+router.delete('/permissions/:permissionName', authWare.authenticateToken, authWare.authenticatePermissions([ "PERMISSIONS:DELETE" ]), PermissionController.deletePermission)
 
 module.exports = router

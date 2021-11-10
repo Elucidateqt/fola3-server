@@ -1,20 +1,39 @@
 const mongoose = require('mongoose')
 
+const PermissionSchema = new mongoose.Schema({
+    "name": {
+        type: String,
+        required: true
+    }
+})
+
+PermissionSchema.pre('save', function(next) {
+    const permission = this
+    //give all created permissions to super admin
+    this.model('Role').update({ "name": "super admin" },
+    {$push: {"permissions": permission._id}},
+    next);
+});
+
+PermissionSchema.pre('remove', function(next) {
+    const permission = this
+    // Remove permission from all roles that have it
+    this.model('Role').update({ "permissions": permission._id},
+    {$pull: {"permissions": permission._id}},
+    next);
+});
+
 const Permission = new mongoose.model(
     "Permission",
-    new mongoose.Schema({
-        "name": {
-            type: String,
-            required: true
-        }
-    })
+    PermissionSchema
 )
 
 const createPermission = async (permissionName, creatorId) => {
     try{
-        await new Permission({
+        const result = await new Permission({
             "name": permissionName
         }).save()
+        return result
     }catch(err){
         throw new Error(`Error while creating permission Role ${permissionName} in DB: \n ${err}`)
     }
@@ -48,4 +67,12 @@ const getPermissionCount = async () => {
     }
 }
 
-module.exports = { createPermission, getAllPermissions, getPermissionsByNameList, getPermissionCount }
+const deletePermission = async (name) => {
+    try{
+        await Permission.deleteOne({"name": name})
+    }catch(err){
+        throw new Error(`Error in modules.permission.deletePermission: \n ${err}`)
+    }
+}
+
+module.exports = { createPermission, getAllPermissions, getPermissionsByNameList, getPermissionCount, deletePermission }
