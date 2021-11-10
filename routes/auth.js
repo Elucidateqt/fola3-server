@@ -19,6 +19,7 @@ router.get('/roles', authWare.authenticateToken, authWare.authenticatePermission
 
 router.post('/roles', authWare.authenticateToken, authWare.authenticatePermissions([ "ROLES:CREATE" ]), controller.createRole)
 
+//TODO: return 404 on unknown roleName
 router.put('/roles/:roleName', authWare.authenticateToken, authWare.authenticatePermissions([ "ROLES:UPDATE" ]), controller.updateRole)
 
 router.delete('/roles/:roleName', authWare.authenticateToken, authWare.authenticatePermissions([ "ROLES:DELETE" ]), controller.deleteRole)

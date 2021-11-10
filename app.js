@@ -42,11 +42,7 @@ const projectRoute = require('./routes/projects')
 
 const db = require('./models')
 db.mongoose
-    .connect('mongodb://localhost/kano-surveyer', {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        useCreateIndex: true
-    })
+    .connect('mongodb://localhost/kano-surveyer', {})
     .then(()=> {
         myLogger.log('info', 'Successfully connected to mongoDB.')
         db.initialize(SuperAdminName, SuperAdminMail, SuperAdminPw)   

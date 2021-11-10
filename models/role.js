@@ -47,11 +47,8 @@ const createRole = async (rolename, permissionIds, attainOnProjectCreation) => {
     }
 }
 
-//TODO: finish
 const getRoles = async () => {
     try{
-        //const result = await Role.find({}).populate("permissions").exec()
-
         const roles  = await Role.aggregate([
             {$match: {} },
             {$unwind: '$permissions'},

@@ -225,7 +225,8 @@ const getUsersWithRole = async (rolename) => {
                 "roles": {
                     "$push": "$roles.name"
                 }
-            }}
+            }},
+            {$match: {"roles": rolename}}
         ]).exec()
         if(result.length === 0){
             return null
