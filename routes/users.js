@@ -12,6 +12,8 @@ router.put('/:userId', authWare.authenticateToken, authWare.authenticatePermissi
 
 router.put('/:userId/password', authWare.authenticateToken, authWare.authenticatePermissions([ "USERS:UPDATE:PASSWORD" ]), controller.updatePassword)
 
+router.put('/:userId/roles', authWare.authenticateToken, authWare.authenticatePermissions([ "USERS:UPDATE:ROLES" ]), controller.updateUserRoles)
+
 router.get('/', authWare.authenticateToken, authWare.authenticatePermissions([ "USERS:VIEW" ]), controller.getAllUsers)
 
 //TODO: add cascading delete for projects
