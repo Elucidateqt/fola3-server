@@ -144,16 +144,25 @@ const getUsersByEmail = async (emailList) => {
     }
 }
 
-const updateUser = async (uuid, username, email, passHash, roleIds) => {
+const updateUser = async (uuid, username, email, roleIds) => {
     try{
         await User.findOneAndUpdate({"uuid": uuid},{
             "username": username,
             "email": email,
-            "password": passHash,
             "roles": roleIds
         })
     }catch(err){
         throw new Error(`Error in models.user.updateUser: \n ${err}`)
+    }
+}
+
+const updateUserPassword = async (uuid, passHash) => {
+    try{
+        await User.findOneAndUpdate({"uuid": uuid},{
+            "password": passHash
+        })
+    }catch(err){
+        throw new Error(`Error in models.user.updatePassword: \n ${err}`)
     }
 }
 
@@ -237,4 +246,4 @@ const getUsersWithRole = async (rolename) => {
     }
 }
 
-module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByEmail, deleteUser, getUserCount, createUser, updateUser, giveUserMultipleRoles, getUsersWithRole, usernameExists, emailExists }
+module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByEmail, deleteUser, getUserCount, createUser, updateUser, updateUserPassword, giveUserMultipleRoles, getUsersWithRole, usernameExists, emailExists }

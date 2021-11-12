@@ -38,10 +38,22 @@ exports.updateUser = async (req, res) => {
         await Promise.all(req.body.roles.map(async (role) => {
             roleIds.push(await Role.getRoleIdByName(role))
         }))
-        await User.updateUser(req.params.userId, req.body.username, req.body.email, bcrypt.hashSync(req.body.password,10), roleIds)
-        res.sendStatus(204) 
+        await User.updateUser(req.params.userId, req.body.username, req.body.email, roleIds)
+        res.sendStatus(204)
+        logger.log("info", `User ${req.user.uuid} has updated profile of user ${req.params.userId}.`)
     }catch(err){
         logger.log("error", err)
+        res.sendStatus(500)
+    }
+}
+
+exports.updatePassword = async (req, res) => {
+    try{
+        await User.updateUserPassword(req.params.userId, bcrypt.hashSync(req.body.password,10))
+        res.sendStatus(204)
+        logger.log('info', `User ${req.user.uuid} changed password of user ${req.params.userId}.`)
+    }catch(err){
+        logger.log('error', err)
         res.sendStatus(500)
     }
 }
