@@ -13,3 +13,5 @@ router.post('/', authWare.authenticateToken, authWare.authenticatePermissions([ 
 router.put('/:roleName', authWare.authenticateToken, authWare.authenticatePermissions([ "ROLES:UPDATE" ]), controller.updateRole)
 
 router.delete('/:roleName', authWare.authenticateToken, authWare.authenticatePermissions([ "ROLES:DELETE" ]), controller.deleteRole)
+
+module.exports = router

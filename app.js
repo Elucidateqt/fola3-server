@@ -39,6 +39,8 @@ const httpEvents = registry.createEventChannel('http')
 const authRoute = require("./routes/auth")
 const userRoute = require('./routes/users')
 const projectRoute = require('./routes/projects')
+const roleRoute = require('./routes/roles')
+const permissionRoute = require('./routes/permissions')
 
 const db = require('./models')
 db.mongoose
@@ -77,6 +79,8 @@ app.get('/health', function (req, res) {
 })
 
 app.use("/auth", authRoute)
+app.use("/roles", roleRoute)
+app.use("/permissions", permissionRoute)
 app.use("/users", userRoute)
 app.use("/projects", projectRoute)
 

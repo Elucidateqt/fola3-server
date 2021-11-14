@@ -1,9 +1,8 @@
 
 const db = require('../models')
 const Permission = db.permission
-const Role = db.role
 const registry = require('../lib/registry')
-const logger = registry.getService('logger').child({ component: 'Permission-Controller'})
+const logger = registry.getService('logger').child({ component: 'PermissionController'})
 
 exports.createPermission = async (req, res) => {
     try{

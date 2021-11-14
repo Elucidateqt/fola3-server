@@ -5,7 +5,7 @@ const middleware = require('../middleware')
 const authWare = middleware.auth
 const userWare = middleware.user
 const controller = require('../controllers/auth')
-const PermissionController = require('../controllers/permission')
+const PermissionController = require('../controllers/permissions')
 
 router.post('/signup', userWare.checkSignUpData, userWare.checkDuplicateUsernameOrEmail, controller.signUp)
 
