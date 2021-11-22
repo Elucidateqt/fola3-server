@@ -5,7 +5,7 @@ const authWare = middleware.auth
 const controller = require('../controllers/roles')
 
 
-router.get('/', authWare.authenticateToken, authWare.authenticatePermissions([ "ROLES:VIEW" ]),  controller.getRoles)
+router.get('/', authWare.authenticateToken, authWare.authenticatePermissions([ "ROLES:VIEW" ]),  controller.getAllRoles)
 
 router.post('/', authWare.authenticateToken, authWare.authenticatePermissions([ "ROLES:CREATE" ]), controller.createRole)
 

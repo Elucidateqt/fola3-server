@@ -8,7 +8,7 @@ const Role = db.role
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'authController'})
 
-exports.signUp = async (req, res) => {
+const signUp = async (req, res) => {
     try {
         const roleId = await Role.getRoleIdByName(db.ROLES.USER)
         const user = await User.createUser(uuidv4(), req.body.username, req.body.email, bcrypt.hashSync(req.body.password,10), [roleId])
@@ -20,7 +20,7 @@ exports.signUp = async (req, res) => {
 };
 
 
-exports.signIn = async (req, res) => {
+const signIn = async (req, res) => {
     try{
         const user = await User.getUserByEmail(req.body.email)
         if (!user) {
@@ -46,7 +46,7 @@ exports.signIn = async (req, res) => {
             roles: roleNames,
             projectRoles: []
         }
-        const accessToken = generateAccessToken(userPayload),
+        const accessToken = await generateAccessToken(user.uuid),
         refreshToken = jwt.sign(userPayload, process.env.REFRESH_TOKEN_SECRET)
         db.refreshTokens.push(refreshToken)
         res.json({
@@ -61,30 +61,23 @@ exports.signIn = async (req, res) => {
     }
 }
 
-exports.signOut = (req, res) => {
+const signOut = (req, res) => {
     db.refreshTokens = db.refreshTokens.filter(token => token !== req.body.refreshToken)
     logger.log('info', `user ${req.user.uuid} logged out.`)
     res.sendStatus(204)
 }
 
-exports.refreshAccessToken = (req, res) => {
+const refreshAccessToken = (req, res) => {
     const refreshToken = req.body.refreshToken
     if(refreshToken){
         if(!db.refreshTokens.includes(refreshToken)){
             return res.sendStatus(403)
         }
-        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) =>{
+        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, data) =>{
             if(err){
                 return res.sendStatus(403)
             }
-            const userPayload = {
-                uuid: user.uuid,
-                username: user.username,
-                email: user.email,
-                roles: user.roles,
-                projectRoles: user.projectRoles
-            }
-            const accessToken = generateAccessToken(userPayload)
+            const accessToken = await generateAccessToken(data.uuid)
             logger.log('info', `Access-Token refreshed by user ${user.uuid}`)
             res.json({accessToken: accessToken})
         })
@@ -94,6 +87,20 @@ exports.refreshAccessToken = (req, res) => {
 }
 
 
-function generateAccessToken(user) {
-    return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: process.env.ACCESS_TOKEN_LIFETIME})
+const generateAccessToken = async (uuid) => {
+    try{
+        const user = await User.getUserByUuid(uuid)
+        const userPayload = {
+            uuid: user.uuid,
+            username: user.username,
+            email: user.email,
+            roles: user.roles,
+            projectRoles: user.projectRoles
+        }
+        return jwt.sign(userPayload, process.env.ACCESS_TOKEN_SECRET, {expiresIn: process.env.ACCESS_TOKEN_LIFETIME})
+    }catch(err){
+        throw new Error(`Error generating accesstoken for user ${uuid}`)
+    }
 }
+
+module.exports = { signUp, signIn, signOut, refreshAccessToken, generateAccessToken }

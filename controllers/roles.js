@@ -37,9 +37,9 @@ exports.createRole = async (req, res) => {
     }
 }
 
-exports.getRoles = async (req, res) => {
+exports.getAllRoles = async (req, res) => {
     try{
-        const roles = await Role.getRoles()
+        const roles = await Role.getAllRoles()
         res.json({"roles": roles})
         logger.log("info", `Retrieved all roles for user ${req.user.uuid}`)
     }catch(err){

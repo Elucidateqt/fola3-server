@@ -82,7 +82,7 @@ const getAllUsers = async () => {
 
 const getUserByUuid = async (uuid) => {
     try{
-        const result = await User.findOne({ "uuid": uuid }).populate("role").exec()
+        const result = await User.findOne({ "uuid": uuid }).populate("roles").exec()
         let roleNames = []
         result.roles.map(role => roleNames.push(role.name))
         const user = {
@@ -116,6 +116,31 @@ const getUserByEmail = async (email) => {
         return user
     }catch(err){
         throw new Error(`Error loading User with email ${email} from DB: ${err}`)
+    }
+}
+
+const getUsersByUuids = async (uuidList) => {
+    try{
+        const result = await User.find({ "uuid": {$in: uuidList} }).populate("roles").exec()
+        if(!result){
+            return null
+        }
+        let users = []
+        result.forEach(el => {
+            let roleNames = []
+            el.roles.map(role => roleNames.push(role.name))
+            users.push({
+                "_id" : el._id,
+                "uuid" : el.uuid,
+                "username": el.username,
+                "email": el.email,
+                "password": el.password,
+                "roles": roleNames
+            })
+        })
+        return users
+    }catch(err){
+        throw new Error(`Error loading User with uuids ${uuidList} from DB: ${err}`)
     }
 }
 
@@ -255,4 +280,4 @@ const getUsersWithRole = async (rolename) => {
     }
 }
 
-module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByEmail, deleteUser, getUserCount, createUser, updateUser, updateUserPassword, updateUserRoles, giveUserMultipleRoles, getUsersWithRole, usernameExists, emailExists }
+module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByUuids, getUsersByEmail, deleteUser, getUserCount, createUser, updateUser, updateUserPassword, updateUserRoles, giveUserMultipleRoles, getUsersWithRole, usernameExists, emailExists }

@@ -14,13 +14,31 @@ const RoleSchema = new mongoose.Schema({
     }]
 })
 
-RoleSchema.pre('remove', function(next) {
+//TODO: remove roles from projectroles if necessary
+RoleSchema.pre('remove', async (doc) => {
     const role = this
+    //remove role from all project-members if it's a project role
+    if(role.attainOnProjectCreation === true){
+        await this.model.projects.update({ "members": {$elemMatch: {"roles": role._id }}},
+            {$pull: {"members.$.roles": role._id}},
+        )
+    }
     // Remove role from all users that have it
-    this.model('users').update({ "roles": {$elemMatch: role._id} }, 
-    {$pull: {"permissions": role._id}},
-    next);
+    await this.model('users').update({ "roles": {$elemMatch: role._id} }, 
+    {$pull: {"roles": role._id}}
+    );
 });
+
+//TODO: add role to project admins if necessary
+RoleSchema.post('save', async (role) => {
+    console.log("role received", role.constructor)
+    if(role.attainOnProjectCreation && role.attainOnProjectCreation === true){
+        const adminRole = await role.constructor.find({"name": "projectAdmin"})
+        role.constructor.model('Project').update({ "members": {$elemMatch: {"roles": adminRole._id }}},
+            {$push: {"members.$.roles": role._id}}
+        )
+    }
+})
 
 
 const Role = mongoose.model(
@@ -47,7 +65,7 @@ const createRole = async (rolename, permissionIds, attainOnProjectCreation) => {
     }
 }
 
-const getRoles = async () => {
+const getAllRoles = async () => {
     try{
         const roles  = await Role.aggregate([
             {$match: {} },
@@ -132,6 +150,24 @@ const getRoleIdByName = async (rolename) => {
     }
 }
 
+const getRolesByNameList = async (nameList) => {
+    try{
+        const roles = await Role.find({"name": {$in: nameList}}).populate("permissions").exec()
+        return roles
+    }catch(err){
+        throw new Error(`Error loading roles by namelist from DB: \n ${err}`)
+    }
+}
+
+const getProjectRolesByNameList = async (nameList) => {
+    try{
+        const roles = await Role.find({"name": {$in: nameList}, "attainOnProjectCreation": true}).populate("permissions").exec()
+        return roles
+    }catch(err){
+        throw new Error(`Error loading roles by namelist from DB: \n ${err}`)
+    }
+}
+
 const getRoleCount = async () => {
     try {
         const result = await Role.estimatedDocumentCount().exec()
@@ -183,4 +219,4 @@ const deleteRole = async (roleName) => {
     }
 }
 
-module.exports = {getRoleCount, createRole, getRoles, updateRole, deleteRole, getRoleIdByName, getProjectCreatorRoles, getRolePermissions, rolesContainPermissions, roleExists }
+module.exports = {getRoleCount, createRole, getAllRoles, updateRole, deleteRole, getRoleIdByName, getRolesByNameList, getProjectRolesByNameList, getProjectCreatorRoles, getRolePermissions, rolesContainPermissions, roleExists }

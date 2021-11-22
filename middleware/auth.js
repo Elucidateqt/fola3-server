@@ -3,6 +3,19 @@ const jwt = require('jsonwebtoken')
 const db = require('../models')
 const Project = db.project
 const Role = db.role
+const controller = require('../controllers/auth')
+
+//TODO: test this
+exports.createNewAccessToken = async (req, res, next) => {
+  try{
+    const token = await controller.generateAccessToken(req.user.uuid)
+    res.body.accessToken = token
+    next()
+  }catch(err){
+    logger.log(err)
+    return res.sendStatus(500)
+  }
+}
 
 exports.authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization']

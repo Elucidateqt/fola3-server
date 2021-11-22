@@ -51,7 +51,7 @@ const createProject = async (uuid, name, description, creatorId, creatorRoleIds)
 
 }
 
-//TODO: finish this
+
 const getProjectByUuid = async (uuid) => {
     try{
         const result  = await Project.aggregate([
@@ -61,35 +61,49 @@ const getProjectByUuid = async (uuid) => {
                 from: 'users',
                 localField: 'members.user',
                 foreignField: '_id',
-                as: 'members.user'
+                as: 'member.userdoc'
             }},
-            {$unwind: '$members.user'},
+            {$unwind: '$member.userdoc'},
             {$unwind: '$members.roles'},
             {$lookup: {
                 from: 'roles',
                 localField: 'members.roles',
                 foreignField: '_id',
-                as: 'members.roles'
+                as: 'member.roledoc'
             }},
-            /*{$group: {
-                "_id": "$_id",
-                "uuid": { "$first": "$uuid" },
-                "name": { "$first": "$name" },
-                "description": { "$first": "$description" },
+            {$unwind: '$member.roledoc'},
+            {$group: {
+                "_id": "$member.userdoc._id",
+                "projectid": { $first: "$_id" },
+                "projectuuid": {$first: "$uuid"},
+                "projectname": { $first: "$name" },
+                "projectdescription": { $first: "$description" },
+                "projectroles": {$push: "$member.roledoc.name"},
+                "username": { $first: "$member.userdoc.username"},
+                "uuid": { $first: "$member.userdoc.uuid"},
+            }},
+            {$group: {
+                "_id": "$projectid",
+                "uuid": {$first: "$projectuuid"},
+                "name": {$first: "$projectname"},
+                "description": {$first: "$projectdescription"},
                 "members": {
-                    "$push": {
-                        "uuid": "$members.user.uuid",
-                        "email": "$members.user.email",
-                        "username": "$members.user.username",
-                        "roles": {"$push" : "$members.roles.name" }
+                    $push: {
+                        "username": "$username",
+                        "uuid": "$uuid",
+                        "projectroles": "$projectroles"
                     }
                 }
-            }}*/
+            }},
+            {$project: {
+                "_id": 0
+            }}
         ]).exec()
+        console.log("result:", result)
         if(result.length === 0){
             return null
         }
-        return result[0]
+        return result
     }catch(err){
         throw new Error(`Error loading Project with UUID ${uuid} from DB: \n ${err}`)
     }
