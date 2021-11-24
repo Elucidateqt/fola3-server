@@ -25,7 +25,8 @@ const Project = new mongoose.model(
                 }]
             }
         ]
-    })
+    },
+    { timestamps: true })
 )
 
 const createProject = async (uuid, name, description, creatorId, creatorRoleIds) => {

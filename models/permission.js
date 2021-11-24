@@ -1,11 +1,14 @@
 const mongoose = require('mongoose')
 
-const PermissionSchema = new mongoose.Schema({
-    "name": {
-        type: String,
-        required: true
-    }
-})
+const PermissionSchema = new mongoose.Schema(
+    {
+        "name": {
+            type: String,
+            required: true
+        }
+    },
+    { timestamps: true }
+)
 
 PermissionSchema.pre('save', function(next) {
     const permission = this

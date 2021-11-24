@@ -1,18 +1,21 @@
 const mongoose = require('mongoose')
 
-const RoleSchema = new mongoose.Schema({
-    "name": {
-        type: String,
-        required: true,
-        unique: true
+const RoleSchema = new mongoose.Schema(
+    {
+        "name": {
+            type: String,
+            required: true,
+            unique: true
+        },
+        "attainOnProjectCreation": Boolean,
+        "permissions": [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Permission",
+            required: true
+        }]
     },
-    "attainOnProjectCreation": Boolean,
-    "permissions": [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Permission",
-        required: true
-    }]
-})
+    { timestamps: true }
+)
 
 //TODO: remove roles from projectroles if necessary
 RoleSchema.pre('remove', async (doc) => {
