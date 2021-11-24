@@ -7,7 +7,10 @@ const RoleSchema = new mongoose.Schema(
             required: true,
             unique: true
         },
-        "attainOnProjectCreation": Boolean,
+        "scope": {
+            type: String,
+            required: true
+        },
         "permissions": [{
             type: mongoose.Schema.Types.ObjectId,
             ref: "Permission",
@@ -21,7 +24,7 @@ const RoleSchema = new mongoose.Schema(
 RoleSchema.pre('remove', async (doc) => {
     const role = this
     //remove role from all project-members if it's a project role
-    if(role.attainOnProjectCreation === true){
+    if(role.scope === 'project'){
         await this.model.projects.update({ "members": {$elemMatch: {"roles": role._id }}},
             {$pull: {"members.$.roles": role._id}},
         )
@@ -35,7 +38,7 @@ RoleSchema.pre('remove', async (doc) => {
 //TODO: add role to project admins if necessary
 RoleSchema.post('save', async (role) => {
     console.log("role received", role.constructor)
-    if(role.attainOnProjectCreation && role.attainOnProjectCreation === true){
+    if(role.scope === 'project'){
         const adminRole = await role.constructor.find({"name": "projectAdmin"})
         role.constructor.model('Project').update({ "members": {$elemMatch: {"roles": adminRole._id }}},
             {$push: {"members.$.roles": role._id}}
@@ -50,17 +53,17 @@ const Role = mongoose.model(
 )
 
 
-const createRole = async (rolename, permissionIds, attainOnProjectCreation) => {
+const createRole = async (rolename, permissionIds, scope) => {
     try{
         const result = await new Role({
             "name": rolename,
             "permissions": permissionIds,
-            "attainOnProjectCreation": attainOnProjectCreation
+            "scope": scope
         }).save()
         const role = {
             "_id": result._id,
             "name": result.name,
-            "attainOnProjectCreation": result.attainOnProjectCreation
+            "scope": result.scope
         }
         return role
     }catch(err){
@@ -83,7 +86,7 @@ const getAllRoles = async () => {
             {$group: {
                 "_id": "$_id",
                 "name": {"$first": "$name"},
-                "attainOnProjectCreation": {"$first": "$attainOnProjectCreation"},
+                "scope": {"$first": "$scope"},
                 "permissions": {
                     $push: "$permission.name"
                 } 
@@ -98,7 +101,7 @@ const getAllRoles = async () => {
 
 const getProjectCreatorRoles = async () => {
     try{
-        const results = await Role.find({ "attainOnProjectCreation": true }).exec()
+        const results = await Role.find({ "scope": "project" }).exec()
         let roles = []
         results.forEach(result => {
             roles.push({
@@ -164,7 +167,7 @@ const getRolesByNameList = async (nameList) => {
 
 const getProjectRolesByNameList = async (nameList) => {
     try{
-        const roles = await Role.find({"name": {$in: nameList}, "attainOnProjectCreation": true}).populate("permissions").exec()
+        const roles = await Role.find({"name": {$in: nameList}, "scope": "project"}).populate("permissions").exec()
         return roles
     }catch(err){
         throw new Error(`Error loading roles by namelist from DB: \n ${err}`)
@@ -207,7 +210,7 @@ const updateRole = async (roleName, newRole) => {
         await Role.updateOne({"name": roleName},{
             "name": newRole.name,
             "permissions": newRole.permissions,
-            "attainOnProjectCreation": newRole.attainOnProjectCreation
+            "scope": newRole.scope
         })
     }catch(err){
         throw new Error(`Error in models.role.roleExists: \n ${err}`)

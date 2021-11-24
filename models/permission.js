@@ -13,7 +13,7 @@ const PermissionSchema = new mongoose.Schema(
 PermissionSchema.pre('save', function(next) {
     const permission = this
     //give all created permissions to super admin
-    this.model('Role').update({ "name": "super admin" },
+    this.model('Role').updateMany({ "name": "super admin" },
     {$push: {"permissions": permission._id}},
     next);
 });

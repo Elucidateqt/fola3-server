@@ -17,8 +17,8 @@ exports.createRole = async (req, res) => {
         }
         const permissions = await Permission.getPermissionsByNameList(req.body.permissions)
         const permissionIds = permissions.map(permission => {return permission._id})
-        const attainOnProjectCreation = req.body.attainOnProjectCreation || false
-        const role = await Role.createRole(req.body.name, permissionIds, attainOnProjectCreation)
+        const scope = req.body.scope || 'global'
+        const role = await Role.createRole(req.body.name, permissionIds, scope)
         
         //give every new Role by default to super admins and self, so they can manage them further
         const superAdmins = await User.getUsersWithRole(db.ROLES.SUPER_ADMIN)
@@ -54,7 +54,7 @@ exports.updateRole = async (req, res) => {
         let permissionIds = []
         const permissions = await Permission.getPermissionsByNameList(req.body.permissions)
         permissionIds = permissions.map(permission => {return permission._id})
-        await Role.updateRole(req.params.roleName,{"name": req.body.name, "permissions": permissions, "attainOnProjectCreation": req.body.attainOnProjectCreation})
+        await Role.updateRole(req.params.roleName,{"name": req.body.name, "permissions": permissions, "scope": req.body.scope})
         res.sendStatus(204)
         logger.log("info", `user ${req.user.uuid} updated role ${req.params.roleName}.`)
     }catch(err){

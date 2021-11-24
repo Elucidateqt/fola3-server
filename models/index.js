@@ -23,32 +23,32 @@ const BASE_ROLES = [
     {
         "rolename": "super admin",
         "permissions": PERMISSIONS,
-        "attainOnProjectCreation": false
+        "scope": 'global'
     },
     {
         "rolename": "admin",
         "permissions": ["USERS:CREATE",  "USERS:VIEW", "USERS:UPDATE:PROFILE", "USERS:UPDATE:ROLES", "USERS:DELETE", "PROJECTS:CREATE", "PROJECTS:VIEW", "PROJECTS:MANAGE", "PROJECTS:DELETE", "ROLES:GRANT", "ROLES:REVOKE", "ROLES:VIEW", "PERMISSIONS:VIEW", "PERMISSIONS:GRANT", "PERMISSIONS:REVOKE"],
-        "attainOnProjectCreation": false
+        "scope": 'global'
     },
     {
         "rolename": "moderator",
         "permissions": ["USERS:VIEW", "PROJECTS:VIEW"],
-        "attainOnProjectCreation": false
+        "scope": 'global'
     },
     {
         "rolename": "projectAdmin",
         "permissions": ["PROJECTS:MANAGE", "PROJECTS:DELETE", "ROLES:GRANT", "ROLES:REVOKE", "PERMISSIONS:GRANT", "PERMISSIONS:REVOKE"],
-        "attainOnProjectCreation": true
+        "scope": 'global'
     },
     {
         "rolename": "projectMember",
         "Permissions": ["PROJECTS:VIEW"],
-        "attainOnProjectCreation": true
+        "scope": 'global'
     },
     {
         "rolename": "user",
         "permissions": ["PROJECTS:CREATE"],
-        "attainOnProjectCreation": false
+        "scope": 'global'
     }
 ]
 
@@ -74,7 +74,7 @@ db.initialize = async (SuperAdminName, SuperAdminMail, SuperAdminPw) => {
                 const permissions = await db.permission.getPermissionsByNameList(role.permissions)
                 const permissionIds = []
                 permissions.forEach(permission => permissionIds.push(permission._id))
-                await db.role.createRole(role.rolename, permissionIds, role.attainOnProjectCreation)
+                await db.role.createRole(role.rolename, permissionIds, role.scope)
                 logger.log("info", `Role ${role.rolename} created successfully.`)
             }
         }
