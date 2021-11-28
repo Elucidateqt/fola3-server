@@ -81,19 +81,40 @@ const getAllUsers = async () => {
     }
 }
 
+
 const getUserByUuid = async (uuid) => {
     try{
-        const result = await User.findOne({ "uuid": uuid }).populate("roles").exec()
-        let roleNames = []
-        result.roles.map(role => roleNames.push(role.name))
-        const user = {
-            "_id" : result._id,
-            "uuid" : result.uuid,
-            "username": result.username,
-            "email": result.email,
-            "password": result.password,
-            "roles": roleNames
-        }
+        //TODO: group data for clean output
+        const res  = await User.aggregate([
+            {$match: {"uuid": uuid} },
+            {$unwind: '$roles'},
+            {$lookup: {
+                from: 'roles',
+                localField: 'roles',
+                foreignField: '_id',
+                as: 'role'
+            }},
+            {$unwind: '$role'},
+            {$unwind: '$role.permissions'},
+            {$lookup: {
+                from: 'permissions',
+                localField: 'role.permissions',
+                foreignField: '_id',
+                as: 'role.permission'
+            }},
+            {$unwind: '$role.permission'},
+            {$group: {
+                "_id": "$_id",
+                "uuid": { $first: "$uuid" },
+                "username": {$first: "$username"},
+                "email": { $first: "$email" },
+                "roles": { $push:  "$role.name" },
+                "permissions": {$push: "$role.permission.name"},
+            }},
+        ]).exec()
+        const user = res[0]
+        user.roles = [...new Set(user.roles)]
+        user.permissions = [...new Set(user.permissions)]
         return user
     }catch(err){
         throw new Error(`Error loading User with UUID ${uuid} from DB: ${err}`)

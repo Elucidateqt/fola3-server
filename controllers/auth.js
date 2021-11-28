@@ -95,7 +95,7 @@ const generateAccessToken = async (uuid) => {
             username: user.username,
             email: user.email,
             roles: user.roles,
-            projectRoles: user.projectRoles
+            permissions: user.permissions
         }
         return jwt.sign(userPayload, process.env.ACCESS_TOKEN_SECRET, {expiresIn: process.env.ACCESS_TOKEN_LIFETIME})
     }catch(err){
