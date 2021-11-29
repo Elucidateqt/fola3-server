@@ -38,23 +38,15 @@ const signIn = async (req, res) => {
               message: "Invalid Password!"
             });
         }
-        let roleNames = user.roles.map(role => {return role.name})
-        const userPayload = {
-            uuid: user.uuid,
-            username: user.username,
-            email: user.email,
-            roles: roleNames,
-            projectRoles: []
-        }
         const accessToken = await generateAccessToken(user.uuid),
-        refreshToken = jwt.sign(userPayload, process.env.REFRESH_TOKEN_SECRET)
+        refreshToken = jwt.sign({"uuid": user.uuid}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: process.env.REFRESH_TOKEN_LIFETIME})
         db.refreshTokens.push(refreshToken)
         res.json({
             "message": "loginSuccessful",
             "refreshToken": refreshToken,
             "accessToken": accessToken
         });
-        logger.log('info',`User ${userPayload.username} logged in`)
+        logger.log('info',`User ${user.username} logged in`)
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
@@ -78,7 +70,7 @@ const refreshAccessToken = (req, res) => {
                 return res.sendStatus(403)
             }
             const accessToken = await generateAccessToken(data.uuid)
-            logger.log('info', `Access-Token refreshed by user ${user.uuid}`)
+            logger.log('info', `Access-Token refreshed by user ${data.uuid}`)
             res.json({accessToken: accessToken})
         })
     }else{
