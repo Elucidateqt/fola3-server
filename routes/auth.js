@@ -13,6 +13,4 @@ router.post('/login', userWare.checkLogInData, controller.signIn)
 
 router.post('/refreshToken', controller.refreshAccessToken)
 
-router.delete('/logout', authWare.authenticateToken, controller.signOut)
-
 module.exports = router

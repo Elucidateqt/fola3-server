@@ -40,7 +40,6 @@ const signIn = async (req, res) => {
         }
         const accessToken = await generateAccessToken(user.uuid),
         refreshToken = jwt.sign({"uuid": user.uuid}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: process.env.REFRESH_TOKEN_LIFETIME})
-        db.refreshTokens.push(refreshToken)
         res.json({
             "message": "loginSuccessful",
             "refreshToken": refreshToken,
@@ -53,18 +52,9 @@ const signIn = async (req, res) => {
     }
 }
 
-const signOut = (req, res) => {
-    db.refreshTokens = db.refreshTokens.filter(token => token !== req.body.refreshToken)
-    logger.log('info', `user ${req.user.uuid} logged out.`)
-    res.sendStatus(204)
-}
-
 const refreshAccessToken = (req, res) => {
     const refreshToken = req.body.refreshToken
     if(refreshToken){
-        if(!db.refreshTokens.includes(refreshToken)){
-            return res.sendStatus(403)
-        }
         jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, data) =>{
             if(err){
                 return res.sendStatus(403)
@@ -95,4 +85,4 @@ const generateAccessToken = async (uuid) => {
     }
 }
 
-module.exports = { signUp, signIn, signOut, refreshAccessToken, generateAccessToken }
+module.exports = { signUp, signIn, refreshAccessToken, generateAccessToken }

@@ -52,8 +52,6 @@ const BASE_ROLES = [
     }
 ]
 
-db.refreshTokens = []
-
 db.initialize = async (SuperAdminName, SuperAdminMail, SuperAdminPw) => {
     try{
         //check if permissions for basic functionality exist in db and add them otherwise
