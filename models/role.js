@@ -99,7 +99,7 @@ const getAllRoles = async () => {
     }
 }
 
-const getProjectCreatorRoles = async () => {
+const getProjectRoles = async () => {
     try{
         const results = await Role.find({ "scope": "project" }).exec()
         let roles = []
@@ -225,4 +225,4 @@ const deleteRole = async (roleName) => {
     }
 }
 
-module.exports = {getRoleCount, createRole, getAllRoles, updateRole, deleteRole, getRoleIdByName, getRolesByNameList, getProjectRolesByNameList, getProjectCreatorRoles, getRolePermissions, rolesContainPermissions, roleExists }
+module.exports = {getRoleCount, createRole, getAllRoles, updateRole, deleteRole, getRoleIdByName, getRolesByNameList, getProjectRolesByNameList, getProjectRoles, getRolePermissions, rolesContainPermissions, roleExists }

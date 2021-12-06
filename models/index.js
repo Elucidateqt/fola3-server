@@ -38,12 +38,12 @@ const BASE_ROLES = [
     {
         "rolename": "projectAdmin",
         "permissions": ["PROJECTS:MANAGE", "PROJECTS:DELETE", "ROLES:GRANT", "ROLES:REVOKE", "PERMISSIONS:GRANT", "PERMISSIONS:REVOKE"],
-        "scope": 'global'
+        "scope": 'project'
     },
     {
         "rolename": "projectMember",
         "Permissions": ["PROJECTS:VIEW"],
-        "scope": 'global'
+        "scope": 'project'
     },
     {
         "rolename": "user",

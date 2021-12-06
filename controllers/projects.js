@@ -15,7 +15,7 @@ exports.createProject = async (req, res) => {
         if(!user){
             return res.status(500).send({ "message": "UserNotFound" })
         }
-        const roles = await Role.getProjectCreatorRoles()
+        const roles = await Role.getProjectRoles()
         const roleNames = []
         const roleIds = []
         roles.forEach((role) => {
