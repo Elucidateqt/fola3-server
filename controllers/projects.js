@@ -68,15 +68,10 @@ exports.getProjectsWithUser = async (req, res) => {
     }
 }
 
-//TODO: reduce and format information returned
 exports.getProject = async (req, res) => {
     try{
-        const project = await Project.getProjectByUuid(req.params.projectId)
-        if(!project){
-            return res.sendStatus(404)
-        }
-        logger.log('info', `lodaded Project ${project.uuid} from DB`)
-        return res.status(200).send({ "message": "projectLoaded", "project": project})   
+        logger.log('info', `lodaded Project ${req.project.uuid} from DB`)
+        return res.status(200).send({ "message": "projectLoaded", "project": req.project})   
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
