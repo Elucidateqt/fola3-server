@@ -12,18 +12,18 @@ router.get('/my', authMiddleware.authenticateToken, controller.getProjectsWithUs
 
 router.get('/:projectId', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, projectMiddleware.canViewProject, controller.getProject)
 
-router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission("PROJECTS:CREATE"), controller.createProject)
+router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission("PROJECT:CREATE"), controller.createProject)
 
-router.delete('/:projectId', authMiddleware.authenticateToken, authMiddleware.authenticateProjectPermission('PROJECTS:DELETE'), controller.deleteProject)
+router.delete('/:projectId', authMiddleware.authenticateToken, authMiddleware.authenticateProjectPermission('PROJECT:DELETE'), controller.deleteProject)
 
-router.put('/:projectId/description', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermission('PROJECTS:MANAGE'), controller.setProjectDescription)
+router.put('/:projectId/description', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticateProjectPermission('PROJECT:MANAGE'), controller.setProjectDescription)
 
-router.put('/:projectId/name', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermission('PROJECTS:MANAGE'), controller.setProjectName)
+router.put('/:projectId/name', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticateProjectPermission('PROJECT:MANAGE'), controller.setProjectName)
 
-router.post('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermission('PROJECTS:MANAGE'), controller.addMembers)
+router.post('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticateProjectPermission('PROJECT:MANAGE'), controller.addMembers)
 
 //TODO: fix this
-router.delete('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermission('PROJECTS:MANAGE'), controller.removeMemembers)
+router.delete('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticateProjectPermission('PROJECT:MANAGE'), controller.removeMemembers)
 
 router.delete('/:projectId/users/me', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid,  projectMiddleware.isUserInProject, controller.leaveProject )
 
