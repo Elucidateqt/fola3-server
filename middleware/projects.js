@@ -33,8 +33,7 @@ exports.isUserInProject = async (req, res, next) => {
 
 exports.canViewProject = async (req, res, next) => {
     try{
-        if(await Project.isUserInProject(req.user.uuid, req.params.projectId) ||
-        await Role.rolesContainPermissions(req.user.roles.concat(req.user.projectRoles), [ "PROJECTS:VIEW" ])){
+        if(await Project.isUserInProject(req.user.uuid, req.params.projectId) || req.user.permissions.includes('PROJECTS:VIEW')){
             return next()
         }
         return res.sendStatus(403)

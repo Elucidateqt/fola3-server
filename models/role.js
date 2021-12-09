@@ -37,7 +37,6 @@ RoleSchema.pre('remove', async (doc) => {
 
 //TODO: add role to project admins if necessary
 RoleSchema.post('save', async (role) => {
-    console.log("role received", role.constructor)
     if(role.scope === 'project'){
         const adminRole = await role.constructor.find({"name": "projectAdmin"})
         role.constructor.model('Project').update({ "members": {$elemMatch: {"roles": adminRole._id }}},
@@ -193,7 +192,6 @@ const rolesContainPermissions = async (roles, permissions) => {
     }catch(err){
         throw new Error(`Error in models.role.rolesContainPermissions: \n ${err}`)
     }
-
 }
 
 const roleExists = async (roleName) => {

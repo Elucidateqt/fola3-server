@@ -7,7 +7,6 @@ const logger = registry.getService('logger').child({ component: 'PermissionContr
 exports.createPermission = async (req, res) => {
     try{
         const permission = await Permission.createPermission(req.body.name)
-        console.log("permission", permission)
         logger.log('info', `User ${req.user.uuid} created permission ${req.body.name}`)
         res.sendStatus(204)
     }catch(err){

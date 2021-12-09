@@ -5,24 +5,25 @@ const authMiddleware = middleware.auth
 const projectMiddleware = middleware.project
 const controller = require('../controllers/projects')
 
-
-router.get('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermissions(['PROJECTS:VIEW']), controller.getAllProjects)
+//TODO: hydrate request with project when checking projectId
+router.get('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission('PROJECTS:VIEW'), controller.getAllProjects)
 
 router.get('/my', authMiddleware.authenticateToken, controller.getProjectsWithUser)
 
 router.get('/:projectId', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, projectMiddleware.canViewProject, controller.getProject)
 
-router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermissions([ "PROJECTS:CREATE" ]), controller.createProject)
+router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission("PROJECTS:CREATE"), controller.createProject)
 
-router.delete('/:projectId', authMiddleware.authenticateToken, authMiddleware.authenticatePermissions([ 'PROJECTS:DELETE' ]), controller.deleteProject)
+router.delete('/:projectId', authMiddleware.authenticateToken, authMiddleware.authenticateProjectPermission('PROJECTS:DELETE'), controller.deleteProject)
 
-router.put('/:projectId/description', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermissions([ 'PROJECTS:MANAGE' ]), controller.setProjectDescription)
+router.put('/:projectId/description', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermission('PROJECTS:MANAGE'), controller.setProjectDescription)
 
-router.put('/:projectId/name', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermissions([ 'PROJECTS:MANAGE' ]), controller.setProjectName)
+router.put('/:projectId/name', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermission('PROJECTS:MANAGE'), controller.setProjectName)
 
-router.post('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermissions([ 'PROJECTS:MANAGE' ]), controller.addMembers)
+router.post('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermission('PROJECTS:MANAGE'), controller.addMembers)
 
-router.delete('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermissions([ 'PROJECTS:MANAGE' ]), controller.removeMemembers)
+//TODO: fix this
+router.delete('/:projectId/users', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid, authMiddleware.authenticatePermission('PROJECTS:MANAGE'), controller.removeMemembers)
 
 router.delete('/:projectId/users/me', authMiddleware.authenticateToken, projectMiddleware.isProjectUuidValid,  projectMiddleware.isUserInProject, controller.leaveProject )
 

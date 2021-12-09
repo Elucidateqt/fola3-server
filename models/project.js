@@ -31,7 +31,6 @@ const Project = new mongoose.model(
 
 const createProject = async (uuid, name, description, creatorId, creatorRoleIds) => {
     try{
-        console.log("creatorRoleIds: ", creatorRoleIds)
         const project = await new Project({
             "uuid": uuid,
             "name": name,
@@ -100,11 +99,10 @@ const getProjectByUuid = async (uuid) => {
                 "_id": 0
             }}
         ]).exec()
-        console.log("result:", result)
         if(result.length === 0){
             return null
         }
-        return result
+        return result[0]
     }catch(err){
         throw new Error(`Error loading Project with UUID ${uuid} from DB: \n ${err}`)
     }
@@ -244,6 +242,36 @@ const removeMembersFromProject = async (projectUuid, memberIds) => {
     }
 }
 
+const getUserRolesInProject = async (userUuid, projectUuid) => {
+    try{
+        const results = await Project.aggregate([
+            { $match: { "uuid": projectUuid } },
+            { $unwind: '$members'},
+            {$lookup: {
+                from: 'users',
+                localField: 'members.user',
+                foreignField: '_id',
+                as: 'members.user'
+            }},
+            {$group: {
+                "_id": "$_id",
+                "members": {
+                    "$push": {
+                        "uuid": "$members.user.uuid",
+                        "email": "$members.user.email",
+                        "username": "$members.user.username",
+                        "role": "$members.role"
+                    }
+                }
+            }},
+            {$match: {members: {$elemMatch: {uuid: userUuid}}}}
+        ]).exec()   
+        return results
+    }catch(err){
+        throw new Error(`Error in models.project.getUserRolesInProject: \n ${err}`)
+    }
+}
+
 const hasUserRoleInProject = async (userUuid, projectUuid) => {
     try{
         const results = await Project.aggregate([
@@ -322,4 +350,4 @@ const isUserInProject = async (userUuid, projectUuid) => {
     }
 }
 
-module.exports = { createProject, getProjectByUuid, getAllProjects, getAllProjectsWithUser, updateProjectDescription, updateProjectName, deleteProject, getUsersInProject, hasUserRoleInProject, addMembersToProject, removeMembersFromProject, isUserInProject }
+module.exports = { createProject, getProjectByUuid, getAllProjects, getAllProjectsWithUser, updateProjectDescription, updateProjectName, deleteProject, getUsersInProject, getUserRolesInProject, hasUserRoleInProject, addMembersToProject, removeMembersFromProject, isUserInProject }

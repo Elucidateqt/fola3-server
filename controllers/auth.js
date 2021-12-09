@@ -38,7 +38,7 @@ const signIn = async (req, res) => {
               message: "Invalid Password!"
             });
         }
-        const accessToken = await generateAccessToken(user.uuid),
+        const accessToken = jwt.sign({"uuid": user.uuid}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: process.env.ACCESS_TOKEN_LIFETIME}),
         refreshToken = jwt.sign({"uuid": user.uuid}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: process.env.REFRESH_TOKEN_LIFETIME})
         res.json({
             "message": "loginSuccessful",

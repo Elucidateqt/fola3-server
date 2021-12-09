@@ -59,8 +59,7 @@ exports.getAllProjects = async (req, res) => {
 
 exports.getProjectsWithUser = async (req, res) => {
     try{
-        const user = await User.getUserByUuid(req.user.uuid)
-        const projectList = await Project.getAllProjectsWithUser(user._id)
+        const projectList = await Project.getAllProjectsWithUser(req.user._id)
         logger.log('info', `Loaded projects with User ${req.user.uuid} from DB.`)
         return res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
     }catch(err){
@@ -177,7 +176,7 @@ exports.leaveProject = async (req, res) => {
             return res.status(404).send({ "message": "projectNotFound" })
         }
         //reject if the project would be left without any admins
-        if(project.members.filter(user => user.role === "admin" && user.uuid != req.user.uuid).length === 0){
+        if(project.members.filter(user => user.projectroles.includes('projectAdmin') && user.uuid != req.user.uuid).length === 0){
             logger.log('warn', `User ${req.user.uuid} not permitted to leave. Last admin left`)
             return res.status(405).send({ "message": "lastAdminLeft" })
         }
