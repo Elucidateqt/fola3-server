@@ -152,13 +152,13 @@ exports.addMembers = async (req, res) => {
 exports.removeMemembers = async (req, res) => {
     if(req.body.users){
         //admin can't delete themselves to guarantee atleast 1 admin per project
-        if(req.body.users.some(email => email === req.user.email)){
+        if(req.body.users.some(uuid => uuid === req.user.uuid)){
             logger.log('warn', `User ${req.user.uuid} tried to remove himself from project ${req.params.projectId}`)
             return res.status(400).send({ "message": "cantDeleteSelf" })
         }
         //get user IDs, remove from array with $pull $in
         let userIds = []
-        const users = await User.getUsersByEmail(req.body.users)
+        const users = await User.getUsersByUuids(req.body.users)
         users.forEach(user => userIds.push(user._id))
         await Project.removeMembersFromProject(req.params.projectId, userIds)
         logger.log('info', `removed ${userIds.length} members from project ${req.params.projectId}`)
