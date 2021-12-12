@@ -21,6 +21,10 @@ const signUp = async (req, res) => {
 
 
 const signIn = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
         const user = await User.getUserByEmail(req.body.email)
         if (!user) {

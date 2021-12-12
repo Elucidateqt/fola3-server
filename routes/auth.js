@@ -5,11 +5,11 @@ const middleware = require('../middleware')
 const authWare = middleware.auth
 const userWare = middleware.user
 const controller = require('../controllers/auth')
-const PermissionController = require('../controllers/permissions')
+const { body } = require('express-validator');
 
-router.post('/signup', userWare.checkSignUpData, userWare.checkDuplicateUsernameOrEmail, controller.signUp)
+router.post('/signup', body('email').exists().isEmail().normalizeEmail(), body('password').exists().isLength({min: 5}), body('username').exists().isLength({min: 3, max: 16}), userWare.checkDuplicateUsernameOrEmail, controller.signUp)
 
-router.post('/login', userWare.checkLogInData, controller.signIn)
+router.post('/login', body('email').exists().isEmail().normalizeEmail(), body('password').exists().isLength({min: 5}), controller.signIn)
 
 router.post('/refreshToken', controller.refreshAccessToken)
 
