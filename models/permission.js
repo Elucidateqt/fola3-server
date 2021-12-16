@@ -78,4 +78,13 @@ const deletePermission = async (name) => {
     }
 }
 
-module.exports = { createPermission, getAllPermissions, getPermissionsByNameList, getPermissionCount, deletePermission }
+const permissionExists = async (name) => {
+    try{
+        const result = await Permission.find({'name': name}).exec()
+        return result.length > 0
+    }catch(err){
+        throw new Error(`Error in modules.permission.permissionExists: \n ${err}`)
+    }
+}
+
+module.exports = { createPermission, getAllPermissions, getPermissionsByNameList, getPermissionCount, deletePermission, permissionExists }

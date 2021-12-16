@@ -4,11 +4,16 @@ const bcrypt = require('bcrypt')
 const db = require('../models')
 const User = db.user
 const Role = db.role
+const { validationResult } = require('express-validator')
 
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'authController'})
 
 const signUp = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try {
         const roleId = await Role.getRoleIdByName(db.ROLES.USER)
         const user = await User.createUser(uuidv4(), req.body.username, req.body.email, bcrypt.hashSync(req.body.password,10), [roleId])

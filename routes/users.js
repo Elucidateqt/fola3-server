@@ -4,19 +4,37 @@ const middleware = require('../middleware')
 const authWare =  middleware.auth
 const userWare =  middleware.user
 const controller  = require('../controllers/users')
+const { body, param } = require('express-validator')
 
-router.post('/', authWare.authenticateToken, authWare.authenticatePermission("USERS:CREATE"), userWare.checkSignUpData, userWare.checkDuplicateUsernameOrEmail, controller.createUser)
+router.post('/', authWare.authenticateToken, authWare.authenticatePermission("USERS:CREATE"), 
+body('email').exists().isEmail().normalizeEmail().custom(userWare.checkDuplicateEmail),
+body('password').exists().isString().isLength({min: 5}),
+body('username').exists().isString().isLength({min: 3, max: 16}).custom(userWare.checkDuplicateUsername),
+controller.createUser)
 
-//TODO: check for unkown roles in body
-router.put('/:userId', authWare.authenticateToken, authWare.authenticatePermission("USERS:UPDATE:PROFILE"), controller.updateUser)
+router.put('/:userId/profile', authWare.authenticateToken, authWare.authenticatePermission("USERS:UPDATE:PROFILE"), 
+param('userId').trim().isUUID(),
+body('username').exists().isString().trim().isLength({min: 3, max: 16}),
+body('email').exists().isString().trim().isEmail().normalizeEmail(),
+controller.updateUser)
 
-router.put('/:userId/password', authWare.authenticateToken, authWare.authenticatePermission("USERS:UPDATE:PASSWORD"), controller.updatePassword)
 
-router.put('/:userId/roles', authWare.authenticateToken, authWare.authenticatePermission("USERS:UPDATE:ROLES"), controller.updateUserRoles)
+router.put('/:userId/password', authWare.authenticateToken, authWare.authenticatePermission("USERS:UPDATE:PASSWORD"),
+param('userId').trim().isUUID(),
+body('password').exists().isString().trim().isLength({min: 5}),
+controller.updatePassword)
 
+router.put('/:userId/roles', authWare.authenticateToken, authWare.authenticatePermission("USERS:UPDATE:ROLES"),
+param('userId').trim().isUUID(),
+body('roles').exists().isArray().custom(authWare.userHasAllRoles),
+controller.updateUserRoles)
+
+//TODO: add pagination
 router.get('/', authWare.authenticateToken, authWare.authenticatePermission("USERS:VIEW"), controller.getAllUsers)
 
 //TODO: add cascading delete for projects
-router.delete('/:userId', authWare.authenticateToken, authWare.authenticatePermission("USERS:DELETE"), controller.deleteUser)
+router.delete('/:userId', authWare.authenticateToken, authWare.authenticatePermission("USERS:DELETE"),
+param('userId').trim().isUUID(),
+controller.deleteUser)
 
 module.exports = router

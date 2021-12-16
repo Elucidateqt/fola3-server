@@ -1,22 +1,21 @@
 const db = require('../models')
 const User = db.user
 const mailPattern = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-const { validationResult } = require('express-validator');
 
-const checkDuplicateUsernameOrEmail = async (req, res, next) => {
-  const errors = validationResult(req)
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-    const isDuplicateUsername = await User.usernameExists(req.body.username)
+const checkDuplicateUsername = async (value) => {
+    const isDuplicateUsername = await User.usernameExists(value)
     if(isDuplicateUsername){
-      return res.status(500).send({ "message": "duplicateUsername" })
+      throw new Error('Username already exists.')
     }
-    const isDuplicateMail = await User.emailExists(req.body.email)
-    if(isDuplicateMail){
-      return res.status(500).send({ "message": "duplicateMail" })
-    }
-    next()
+    return true
 };
 
-module.exports = { checkDuplicateUsernameOrEmail }
+const checkDuplicateEmail = async (value) => {
+    const isDuplicateMail = await User.emailExists(value)
+    if(isDuplicateMail){
+      throw new Error('Email already exists.')
+    }
+    return true
+};
+
+module.exports = { checkDuplicateUsername, checkDuplicateEmail }

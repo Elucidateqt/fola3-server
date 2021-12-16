@@ -5,13 +5,18 @@ const { v4: uuidv4 } = require('uuid')
 const bcrypt = require('bcrypt')
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: "User-Controller" })
+const { validationResult } = require('express-validator')
 
-exports.createUser = async (username, email, password, roleName) => {
+exports.createUser = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
         //use user-role as default-case
-        roleName = roleName || 'user'
+        roleName = 'user'
         const roleId = await Role.getRoleIdByName(roleName)
-        const user = await User.createUser(uuidv4(), username, email, bcrypt.hashSync(password,10), roleId)
+        const user = await User.createUser(uuidv4(), req.body.username, req.body.email, bcrypt.hashSync(req.body.password,10), roleId)
         res.status(200).send({ "message": "userCreated", "user": user })
     }catch(err){
         console.error(`Error creating User in Authcontroller: \n ${err}`)
@@ -33,6 +38,10 @@ exports.getAllUsers = async (req, res) => {
 }
 
 exports.updateUser = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
         await User.updateUser(req.params.userId, req.body.username, req.body.email)
         res.sendStatus(204)
@@ -44,6 +53,10 @@ exports.updateUser = async (req, res) => {
 }
 
 exports.updateUserRoles = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
         let roleIds = []
         await Promise.all(req.body.roles.map(async (role) => {
@@ -59,6 +72,10 @@ exports.updateUserRoles = async (req, res) => {
 }
 
 exports.updatePassword = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
         await User.updateUserPassword(req.params.userId, bcrypt.hashSync(req.body.password,10))
         res.sendStatus(204)
@@ -70,6 +87,10 @@ exports.updatePassword = async (req, res) => {
 }
 
 exports.deleteUser = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
         User.deleteUser(req.params.userId)
         res.sendStatus(204)
