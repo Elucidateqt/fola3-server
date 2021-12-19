@@ -4,13 +4,15 @@ const Role = db.Role
 const helpers = require('../lib/helpers')
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'Project Middleware'})
+const { validationResult } = require('express-validator')
 
 
 exports.loadProject = async (req, res, next) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
-        if(!helpers.isValidUuid(req.params.projectId)){
-            return res.status(400).send({ "message": "projectUuidInvalid" })
-        }
         const project = await Project.getProjectByUuid(req.params.projectId)
         if(!project){
             return res.sendStatus(404)

@@ -6,8 +6,13 @@ const Project = db.project
 const Role = db.role
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'projectController' })
+const { validationResult } = require('express-validator')
 
 exports.createProject = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     let projectName = req.body.projectName || 'New Project',
         projectDescription = req.body.description || 'Description missing'
     try{
@@ -36,6 +41,10 @@ exports.createProject = async (req, res) => {
 }
 
 exports.deleteProject = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
         await Project.deleteProject(req.params.projectId)
         logger.log('error', `Deleted project ${req.params.projectId} from DB`)
@@ -68,7 +77,7 @@ exports.getProjectsWithUser = async (req, res) => {
     }
 }
 
-exports.getProject = async (req, res) => {
+exports.returnProject = async (req, res) => {
     try{
         logger.log('info', `lodaded Project ${req.project.uuid} from DB`)
         return res.status(200).send({ "message": "projectLoaded", "project": req.project})   
@@ -79,37 +88,40 @@ exports.getProject = async (req, res) => {
 }
 
 exports.setProjectDescription = async (req, res) => {
-    if(req.body.description && typeof(req.body.description === 'string') && req.body.description.length <= 156){
-        try{
-            await Project.updateProjectDescription(req.params.projectId, req.body.description)
-            logger.log('info', `updated description of project ${req.params.projectId}`)
-            res.sendStatus(200)
-        }catch(err){
-            logger.log('error', err)
-            res.sendStatus(500)
-        }
-    }else{
-        res.sendStatus(400)
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try{
+        await Project.updateProjectDescription(req.params.projectId, req.body.description)
+        logger.log('info', `updated description of project ${req.params.projectId}`)
+        res.sendStatus(200)
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
     }
 }
 
 exports.setProjectName = async (req, res) => {
-    if(req.body.name && typeof(req.body.name === 'string') && req.body.name.length <= 40){
-        try{
-            await Project.updateProjectName(req.params.projectId, req.body.name)
-            logger.log('info', `Updated description of project ${req.params.projectId}`)
-            res.sendStatus(200)
-        }catch(err){
-            logger.log('error', err)
-            res.sendStatus(500)
-        }
-    }else{
-        res.sendStatus(400)
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
-
+    try{
+        await Project.updateProjectName(req.params.projectId, req.body.name)
+        logger.log('info', `Updated description of project ${req.params.projectId}`)
+        res.sendStatus(200)
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
+    }
 }
 
 exports.addMembers = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     if(req.body.users){
         let uniqueMembers = {},
             userUuids = [],
@@ -145,13 +157,16 @@ exports.addMembers = async (req, res) => {
 }
 
 exports.removeMemembers = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     if(req.body.users){
         //admin can't delete themselves to guarantee atleast 1 admin per project
         if(req.body.users.some(uuid => uuid === req.user.uuid)){
             logger.log('warn', `User ${req.user.uuid} tried to remove himself from project ${req.params.projectId}`)
             return res.status(400).send({ "message": "cantDeleteSelf" })
         }
-        //get user IDs, remove from array with $pull $in
         let userIds = []
         const users = await User.getUsersByUuids(req.body.users)
         users.forEach(user => userIds.push(user._id))
@@ -165,6 +180,10 @@ exports.removeMemembers = async (req, res) => {
 }
 
 exports.leaveProject = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
         const project = await Project.getProjectByUuid(req.params.projectId)
         if(!project){
