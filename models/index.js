@@ -59,7 +59,7 @@ db.initialize = async (SuperAdminName, SuperAdminMail, SuperAdminPw) => {
         if(permissionCount === 0) {
             logger.log("info", "no permissions found in DB. creating permissions for basic functionality...")
             await Promise.all(PERMISSIONS.map(async (permission) => {
-                await db.permission.createPermission(permission, "SYSTEM")
+                await db.permission.createPermission(permission, uuidv4())
                 logger.log("info", `Permission ${permission} created Successfully.`)
             }))
             logger.log("info", "All required permissions created successfully.")

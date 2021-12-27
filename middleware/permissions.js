@@ -8,7 +8,7 @@ const preventDuplicatePermission = async (req, res, next) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const permissionExists = Permission.permissionExists(req.body.name)
+    const permissionExists = await Permission.permissionExists(req.body.name)
     if(permissionExists){
         return res.status(400).send({ 'message': 'Error: permission already exists' })
     }

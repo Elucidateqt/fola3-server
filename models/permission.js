@@ -2,6 +2,10 @@ const mongoose = require('mongoose')
 
 const PermissionSchema = new mongoose.Schema(
     {
+        "uuid": {
+            type: String,
+            required: true
+        },
         "name": {
             type: String,
             required: true
@@ -31,9 +35,10 @@ const Permission = new mongoose.model(
     PermissionSchema
 )
 
-const createPermission = async (permissionName, creatorId) => {
+const createPermission = async (permissionName, uuid) => {
     try{
         const result = await new Permission({
+            "uuid": uuid,
             "name": permissionName
         }).save()
         return result
@@ -45,7 +50,7 @@ const createPermission = async (permissionName, creatorId) => {
 const getAllPermissions = async () => {
     try{
         const result = await Permission.find({}).exec()
-        let permissions = result.map((permission) => {return permission.name})
+        let permissions = result.map((permission) => {return {"uuid": permission.uuid, "name": permission.name}})
         return permissions
     }catch(err){
         throw new Error(`Error while getting all permissions from DB: \n ${err}`)
@@ -70,9 +75,10 @@ const getPermissionCount = async () => {
     }
 }
 
-const deletePermission = async (name) => {
+const deletePermission = async (uuid) => {
     try{
-        await Permission.deleteOne({"name": name})
+        console.log("deleting permission", uuid)
+        const result = await Permission.deleteOne({"uuid": uuid})
     }catch(err){
         throw new Error(`Error in modules.permission.deletePermission: \n ${err}`)
     }

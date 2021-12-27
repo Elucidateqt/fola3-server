@@ -10,6 +10,6 @@ router.get('/', authWare.authenticateToken, authWare.authenticatePermission("PER
 
 router.post('/', authWare.authenticateToken, authWare.authenticatePermission("PERMISSIONS:CREATE"), body('name').exists().isString(), permissionMiddleware.preventDuplicatePermission, controller.createPermission)
 
-router.delete('/:permissionName', authWare.authenticateToken, authWare.authenticatePermission("PERMISSIONS:DELETE"), controller.deletePermission)
+router.delete('/:permissionId', authWare.authenticateToken, authWare.authenticatePermission("PERMISSIONS:DELETE"), controller.deletePermission)
 
 module.exports = router
