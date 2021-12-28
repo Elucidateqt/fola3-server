@@ -2,6 +2,10 @@ const mongoose = require('mongoose')
 
 const RoleSchema = new mongoose.Schema(
     {
+        "uuid": {
+            type: String,
+            required: true
+        },
         "name": {
             type: String,
             required: true,
@@ -52,9 +56,10 @@ const Role = mongoose.model(
 )
 
 
-const createRole = async (rolename, permissionIds, scope) => {
+const createRole = async (uuid, rolename, permissionIds, scope) => {
     try{
         const result = await new Role({
+            "uuid": uuid,
             "name": rolename,
             "permissions": permissionIds,
             "scope": scope
@@ -84,6 +89,7 @@ const getAllRoles = async () => {
             {$unwind: '$permission'},
             {$group: {
                 "_id": "$_id",
+                "uuid": {"$first": "$uuid"},
                 "name": {"$first": "$name"},
                 "scope": {"$first": "$scope"},
                 "permissions": {
@@ -146,6 +152,15 @@ const getRolePermissions = async (rolename) => {
     }
 }
 
+const getRoleByUuid = async (uuid) => {
+    try{
+        const role = await Role.findOne({"uuid": uuid}).exec()
+        return role
+    }catch(err){
+        throw new Error(`Error in models.role.getRoleByUuid: \n ${err}`)
+    }
+}
+
 const getRoleIdByName = async (rolename) => {
     try{
         const role = await Role.findOne({"name": rolename}).exec()
@@ -203,9 +218,9 @@ const roleExists = async (roleName) => {
     }
 }
 
-const updateRole = async (roleName, newRole) => {
+const updateRole = async (uuid, newRole) => {
     try{
-        await Role.updateOne({"name": roleName},{
+        await Role.updateOne({"uuid": uuid},{
             "name": newRole.name,
             "permissions": newRole.permissions,
             "scope": newRole.scope
@@ -215,12 +230,12 @@ const updateRole = async (roleName, newRole) => {
     }
 }
 
-const deleteRole = async (roleName) => {
+const deleteRole = async (uuid) => {
     try{
-        await Role.deleteOne({"name": roleName})
+        await Role.deleteOne({"uuid": uuid})
     }catch(err){
         throw new Error(`Error in models.role.deleteRole: \n ${err}`)
     }
 }
 
-module.exports = {getRoleCount, createRole, getAllRoles, updateRole, deleteRole, getRoleIdByName, getRolesByNameList, getProjectRolesByNameList, getProjectRoles, getRolePermissions, rolesContainPermissions, roleExists }
+module.exports = {getRoleCount, createRole, getAllRoles, getRoleByUuid, updateRole, deleteRole, getRoleIdByName, getRolesByNameList, getProjectRolesByNameList, getProjectRoles, getRolePermissions, rolesContainPermissions, roleExists }

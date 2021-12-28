@@ -1,24 +1,23 @@
 const db = require('../models')
+const { v4: uuidv4 } = require('uuid')
 const User = db.user
 const Role = db.role
 const Permission = db.permission
+const { validationResult } = require('express-validator')
 
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'rolesController'})
 
 exports.createRole = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
-        if(await Role.roleExists(req.body.name)){
-            return res.status(403).send({ "message": "roleExists" })
-        }
-        const hasUserNewPermissions = await Role.rolesContainPermissions(req.user.roles, req.body.permissions)
-        if(!hasUserNewPermissions){
-            return res.status(403).send({ "message": "unownedPermission(s)" })
-        }
         const permissions = await Permission.getPermissionsByNameList(req.body.permissions)
         const permissionIds = permissions.map(permission => {return permission._id})
-        const scope = req.body.scope || 'global'
-        const role = await Role.createRole(req.body.name, permissionIds, scope)
+        const scope = req.body.scope
+        const role = await Role.createRole(uuidv4(), req.body.name, permissionIds, scope)
         
         //give every new Role by default to super admins and self, so they can manage them further
         const superAdmins = await User.getUsersWithRole(db.ROLES.SUPER_ADMIN)
@@ -50,11 +49,15 @@ exports.getAllRoles = async (req, res) => {
 }
 
 exports.updateRole = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
         let permissionIds = []
         const permissions = await Permission.getPermissionsByNameList(req.body.permissions)
         permissionIds = permissions.map(permission => {return permission._id})
-        await Role.updateRole(req.params.roleName,{"name": req.body.name, "permissions": permissions, "scope": req.body.scope})
+        await Role.updateRole(req.params.roleId,{"name": req.body.name, "permissions": permissions, "scope": req.body.scope})
         res.sendStatus(204)
         logger.log("info", `user ${req.user.uuid} updated role ${req.params.roleName}.`)
     }catch(err){
@@ -63,8 +66,12 @@ exports.updateRole = async (req, res) => {
 }
 
 exports.deleteRole = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try{
-        await Role.deleteRole(req.params.roleName)
+        await Role.deleteRole(req.params.roleId)
         res.sendStatus(204)
         logger.log("info", `User ${req.user.uuid} deleted role ${req.params.roleName}`)
     }catch(err){

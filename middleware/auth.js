@@ -52,6 +52,14 @@ exports.userHasAllRoles = async (roles, { req }) => {
   return true
 }
 
+exports.userHasAllPermissions = async (permissions, { req }) => {
+  const hasAllPermissions = permissions.every(permission => req.user.permissions.includes(permission))
+  if(!hasAllPermissions){
+    throw new Error(`You can't set Permissions you don't have.`)
+  }
+  return true
+}
+
 /*This function implements the rule "Users can only grant projectroles that they own themselves"- might be useful in the future
 exports.canUserGrantRole = (res, req, next) => {
   let targetRoles = []

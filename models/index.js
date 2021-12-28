@@ -72,7 +72,7 @@ db.initialize = async (SuperAdminName, SuperAdminMail, SuperAdminPw) => {
                 const permissions = await db.permission.getPermissionsByNameList(role.permissions)
                 const permissionIds = []
                 permissions.forEach(permission => permissionIds.push(permission._id))
-                await db.role.createRole(role.rolename, permissionIds, role.scope)
+                await db.role.createRole(uuidv4(), role.rolename, permissionIds, role.scope)
                 logger.log("info", `Role ${role.rolename} created successfully.`)
             }
         }
