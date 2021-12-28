@@ -59,7 +59,7 @@ exports.updateRole = async (req, res) => {
         permissionIds = permissions.map(permission => {return permission._id})
         await Role.updateRole(req.params.roleId,{"name": req.body.name, "permissions": permissions, "scope": req.body.scope})
         res.sendStatus(204)
-        logger.log("info", `user ${req.user.uuid} updated role ${req.params.roleName}.`)
+        logger.log("info", `user ${req.user.uuid} updated role ${req.params.roleId}.`)
     }catch(err){
         logger.log('error', err)
     }
@@ -73,7 +73,7 @@ exports.deleteRole = async (req, res) => {
     try{
         await Role.deleteRole(req.params.roleId)
         res.sendStatus(204)
-        logger.log("info", `User ${req.user.uuid} deleted role ${req.params.roleName}`)
+        logger.log("info", `User ${req.user.uuid} deleted role ${req.params.roleId}`)
     }catch(err){
         logger.log('error', err)
         res.sendStatus(501)
