@@ -25,6 +25,11 @@ const User = mongoose.model(
         roles: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: "Role"
+        }],
+        revokedPermissions: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Permission",
+            default: []
         }]
     },
     { timestamps: true })
@@ -84,7 +89,6 @@ const getAllUsers = async () => {
 
 const getUserByUuid = async (uuid) => {
     try{
-        //TODO: group data for clean output
         const res  = await User.aggregate([
             {$match: {"uuid": uuid} },
             {$unwind: '$roles'},
@@ -110,11 +114,37 @@ const getUserByUuid = async (uuid) => {
                 "email": { $first: "$email" },
                 "roles": { $push:  "$role.name" },
                 "permissions": {$push: "$role.permission.name"},
+                "revokedPermissions": { $first: "$revokedPermissions"},
             }},
-        ]).exec()
+            {$lookup: {
+                from: 'permissions',
+                let: {"arr": "$revokedPermissions"},
+                as: 'revokedPermissions',
+                pipeline: [
+                    {$match: {
+                        $expr: {
+                            $cond: [
+                                //if array has any elements...
+                                {$gte: [{$size: "$$arr"}, 1]},
+                                //...then lookup based on ids in array
+                                {$in: ["$_id", "$$arr"]},
+                                //...otherwise do nothing
+                                null
+                            ]
+                        }
+                    }},
+                    {$project: {
+                        "_id": 0,
+                        "name": "$name"
+                    }
+                    }
+                ]
+            }},
+    ]).exec()
         const user = res[0]
         user.roles = [...new Set(user.roles)]
         user.permissions = [...new Set(user.permissions)]
+        user.revokedPermissions = user.revokedPermissions.map(permission => {return permission.name})
         return user
     }catch(err){
         throw new Error(`Error loading User with UUID ${uuid} from DB: ${err}`)
@@ -230,6 +260,36 @@ const deleteUser = async (uuid) => {
     }
 }
 
+const addPermissionsToBlacklist = async (uuid, permissionIds) => {
+    try{
+        await User.updateOne({"uuid": uuid},
+        {$push: {"revokedPermissions": {$each: permissionIds}}}).exec()
+    }catch(err){
+        throw new Error(`Error in models.user.blacklistPermission: \n ${err}`)
+    }
+}
+
+const setPermissionBlacklist = async (uuid, permissionIds) => {
+    try{
+        await User.updateOne({"uuid": uuid},
+        {"revokedPermissions": permissionIds}).exec()
+    }catch(err){
+        throw new Error(`Error in models.user.serPermissionBlacklist: \n ${err}`)
+    }
+}
+
+const removePermissionsFromBlacklist = async (uuid, permissionIds) => {
+    try{
+        await User.updateOne({
+            "uuid": uuid
+        },
+        {$pull: {"revokedPermissions": {$in: permissionIds}}})
+        .exec()
+    }catch(err){
+        throw new Error(`Error removing Permissions from permissionBlacklist: ${err}`)
+    }
+}
+
 const usernameExists = async (username) => {
     try{
         const count = await User.countDocuments({ "username": username })
@@ -302,4 +362,4 @@ const getUsersWithRole = async (rolename) => {
     }
 }
 
-module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByUuids, getUsersByEmail, deleteUser, getUserCount, createUser, updateUser, updateUserPassword, updateUserRoles, giveUserMultipleRoles, getUsersWithRole, usernameExists, emailExists }
+module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByUuids, getUsersByEmail, deleteUser, addPermissionsToBlacklist, removePermissionsFromBlacklist, setPermissionBlacklist, getUserCount, createUser, updateUser, updateUserPassword, updateUserRoles, giveUserMultipleRoles, getUsersWithRole, usernameExists, emailExists }

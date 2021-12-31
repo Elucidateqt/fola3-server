@@ -1,6 +1,7 @@
 const db = require('../models')
 const User = db.user
 const Role = db.role
+const Permission = db.permission
 const { v4: uuidv4 } = require('uuid')
 const bcrypt = require('bcrypt')
 const registry = require('../lib/registry')
@@ -22,6 +23,23 @@ exports.createUser = async (req, res) => {
         console.error(`Error creating User in Authcontroller: \n ${err}`)
     }
 
+}
+
+exports.getUser = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    try{
+        let user = await User.getUserByUuid(req.params.userId)
+        //remove internal id
+        delete user._id
+        res.status(200).send({"user": user})
+        logger.log("info", `Retrieved User ${req.params.userId} for user ${req.user.uuid}`)
+    }catch(err){
+        logger.log("error", `Error retrieving User ${req.params.userId}: \n ${err}`)
+        res.sendStatus(500)
+    }
 }
 
 exports.getAllUsers = async (req, res) => {
@@ -67,6 +85,58 @@ exports.updateUserRoles = async (req, res) => {
         logger.log("info", `User ${req.user.uuid} updated roles of user ${req.params.userId}`)
     }catch(err){
         logger.log("error", err)
+        res.sendStatus(500)
+    }
+}
+
+exports.revokeUserPermissions = async (req, res) => {
+    const errors = validationResult(req)
+    if(!errors.isEmpty()){
+        return res.status(400).json({ errors: errors.array() });  
+    }
+    try{
+        const permissions = await Permission.getPermissionsByUuidList(req.body.permissions)
+        const permissionIds = permissions.map(permission => {return permission._id})
+        await User.addPermissionsToBlacklist(req.params.userId, permissionIds)
+        res.sendStatus(204)
+        logger.log("info", `User ${req.user.uuid} revoked permissions of user ${req.params.userId}`)
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
+    }
+}
+
+exports.setRevokedPermissions = async (req, res) => {
+    const errors = validationResult(req)
+    if(!errors.isEmpty()){
+        return res.status(400).json({ errors: errors.array() });  
+    }
+    try{
+        const permissions = await Permission.getPermissionsByUuidList(req.body.permissions)
+        const permissionIds = permissions.map(permission => {return permission._id})
+        await User.setPermissionBlacklist(req.params.userId, permissionIds)
+        res.sendStatus(204)
+        logger.log("info", `User ${req.user.uuid} revoked permissions of user ${req.params.userId}`)
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
+    }
+}
+
+exports.removeRevokedPermission = async (req, res) => {
+    const errors = validationResult(req)
+    if(!errors.isEmpty()){
+        return res.status(400).json({ errors: errors.array() });  
+    }
+    try{
+        const permissions = await Permission.getPermissionsByUuidList([req.params.permissionId])
+        const permissionIds = permissions.map(permission => {return permission._id})
+        console.log("permissionIds", permissionIds)
+        await User.removePermissionsFromBlacklist(req.params.userId, permissionIds)
+        res.sendStatus(204)
+        logger.log("info", `User ${req.user.uuid} removed revoked permissions of user ${req.params.userId}`)
+    }catch(err){
+        logger.log('error', err)
         res.sendStatus(500)
     }
 }

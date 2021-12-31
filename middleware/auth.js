@@ -22,7 +22,11 @@ exports.authenticateToken = (req, res, next) => {
 
 exports.authenticatePermission = (permission) => {
   return async (req,res,next) => {
-    if(req.user.permissions.includes(permission)){
+    let userPermissions = req.user.permissions
+    if(!req.user.roles.includes("super admin")){
+      userPermissions = req.user.permissions.filter(permission => !req.user.revokedPermissions.includes(permission))
+    }
+    if(userPermissions.includes(permission)){
       return next()
     }
     return res.sendStatus(401)
@@ -37,7 +41,13 @@ exports.authenticateProjectPermission = (permission) => {
     await Promise.all(projectRoles.map(async (rolename) => {
       projectPermissions = projectPermissions.concat(await Role.getRolePermissions(rolename))
     }))
-    if(!globalPermissions.concat(projectPermissions).includes(permission)){
+    let userPermissions = globalPermissions.concat(projectPermissions)
+    if(!req.user.roles.includes("super admin")){
+      userPermissions = userPermissions.filter(permission => 
+        !req.user.revokedPermissions.includes(permission)
+      )
+    }
+    if(userPermissions.includes(permission)){
       return res.sendStatus(401)
     }
     next()

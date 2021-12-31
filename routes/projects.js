@@ -13,7 +13,7 @@ router.get('/my', authMiddleware.authenticateToken, controller.getProjectsWithUs
 router.get('/:projectId', authMiddleware.authenticateToken, param('projectId').trim().isUUID().withMessage('must be valid UUID'), projectMiddleware.loadProject, projectMiddleware.canViewProject, controller.returnProject)
 
 router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission("PROJECT:CREATE"),
-body('projectName').exists().isString().trim().isLength({min: 3, max: 16}).withMessage('Must be between 3 and 16 characters long.').isAlpha().withMessage('No special characters allowed.'),
+body('projectName').exists().isString().trim().isLength({min: 3, max: 16}).withMessage('Must be between 3 and 16 characters long.').isAlpha('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
 body('description').exists().isString().trim().isLength({min: 3, max: 140}).withMessage('Must be between 3 and 140 characters long.').escape(),
 controller.createProject)
 
