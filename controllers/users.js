@@ -76,10 +76,7 @@ exports.updateUserRoles = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
     try{
-        let roleIds = []
-        await Promise.all(req.body.roles.map(async (role) => {
-            roleIds.push(await Role.getRoleIdByName(role))
-        }))
+        let roleIds = req.targetRoles.map(role => {return role._id})
         await User.updateUserRoles(req.params.userId, roleIds)
         res.sendStatus(204)
         logger.log("info", `User ${req.user.uuid} updated roles of user ${req.params.userId}`)

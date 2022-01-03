@@ -25,7 +25,8 @@ controller.updatePassword)
 
 router.put('/:userId/roles', authWare.authenticateToken, authWare.authenticatePermission("USERS:ROLES:UPDATE"),
 param('userId').trim().isUUID().withMessage('must be valid UUID'),
-body('roles').exists().isArray().custom(authWare.userHasAllRoles),
+body('roles').exists().isArray().isLength({min: 1}).custom(authWare.userHasAllRoles),
+body('roles.*').isUUID(),
 controller.updateUserRoles)
 
 router.post('/:userId/permissionBlacklist', authWare.authenticateToken, authWare.authenticatePermission("USERS:PERMISSIONBLACKLIST:MANAGE"),

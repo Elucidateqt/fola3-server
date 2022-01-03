@@ -170,6 +170,15 @@ const getRoleIdByName = async (rolename) => {
     }
 }
 
+const getRolesByUuidList = async (uuids) => {
+    try{
+        const roles = await Role.find({"uuid": {$in: uuids}}).populate("permissions").exec()
+        return roles
+    }catch(err){
+        throw new Error(`Error loading roles by UUID list from DB: \n ${err}`)
+    }
+}
+
 const getRolesByNameList = async (nameList) => {
     try{
         const roles = await Role.find({"name": {$in: nameList}}).populate("permissions").exec()
@@ -238,4 +247,4 @@ const deleteRole = async (uuid) => {
     }
 }
 
-module.exports = {getRoleCount, createRole, getAllRoles, getRoleByUuid, updateRole, deleteRole, getRoleIdByName, getRolesByNameList, getProjectRolesByNameList, getProjectRoles, getRolePermissions, rolesContainPermissions, roleExists }
+module.exports = {getRoleCount, createRole, getAllRoles, getRoleByUuid, updateRole, deleteRole, getRoleIdByName, getRolesByUuidList, getRolesByNameList, getProjectRolesByNameList, getProjectRoles, getRolePermissions, rolesContainPermissions, roleExists }

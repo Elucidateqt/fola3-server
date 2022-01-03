@@ -14,8 +14,7 @@ exports.createRole = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
     try{
-        const permissions = await Permission.getPermissionsByNameList(req.body.permissions)
-        const permissionIds = permissions.map(permission => {return permission._id})
+        const permissionIds = req.targetPermissions.map(permission => {return permission._id})
         const scope = req.body.scope
         const role = await Role.createRole(uuidv4(), req.body.name, permissionIds, scope)
         
@@ -55,7 +54,7 @@ exports.updateRole = async (req, res) => {
     }
     try{
         let permissionIds = []
-        const permissions = await Permission.getPermissionsByNameList(req.body.permissions)
+        const permissions = req.targetPermissions.map(permission => {return permission._id})
         permissionIds = permissions.map(permission => {return permission._id})
         await Role.updateRole(req.params.roleId,{"name": req.body.name, "permissions": permissions, "scope": req.body.scope})
         res.sendStatus(204)

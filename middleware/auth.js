@@ -4,6 +4,7 @@ const db = require('../models')
 const Project = db.project
 const Role = db.role
 const User = db.user
+const Permission = db.permission
 const controller = require('../controllers/auth')
 
 exports.authenticateToken = (req, res, next) => {
@@ -54,8 +55,11 @@ exports.authenticateProjectPermission = (permission) => {
   }
 }
 
-exports.userHasAllRoles = async (roles, { req }) => {
-  const hasAllRoles = roles.every(role => req.user.roles.includes(role))
+exports.userHasAllRoles = async (roleIds, { req }) => {
+  const roles = await Role.getRolesByUuidList(roleIds)
+  req.targetRoles = roles
+  const roleNames = roles.map(role => {return role.name})
+  const hasAllRoles = roleNames.every(role => req.user.roles.includes(role))
   if(!hasAllRoles){
     throw new Error(`You can't set roles you don't have.`)
   }
@@ -63,7 +67,10 @@ exports.userHasAllRoles = async (roles, { req }) => {
 }
 
 exports.userHasAllPermissions = async (permissions, { req }) => {
-  const hasAllPermissions = permissions.every(permission => req.user.permissions.includes(permission))
+  const perms = await Permission.getPermissionsByUuidList(permissions)
+  req.targetPermissions = perms
+  const permNames = [...new Set(perms.map(permission => {return permission.name}))]
+  const hasAllPermissions = permNames.every(permission => req.user.permissions.includes(permission))
   if(!hasAllPermissions){
     throw new Error(`You can't set Permissions you don't have.`)
   }
