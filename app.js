@@ -41,6 +41,7 @@ const userRoute = require('./routes/users')
 const projectRoute = require('./routes/projects')
 const roleRoute = require('./routes/roles')
 const permissionRoute = require('./routes/permissions')
+const bugreportRoute = require('./routes/bugreports')
 
 const db = require('./models')
 db.mongoose
@@ -83,6 +84,7 @@ app.use("/roles", roleRoute)
 app.use("/permissions", permissionRoute)
 app.use("/users", userRoute)
 app.use("/projects", projectRoute)
+app.use("/bugreports", bugreportRoute)
 
 server = http.createServer(app)
 server.listen(Port, () => {

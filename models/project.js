@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const db = require('.');
 
 const Project = new mongoose.model(
     "Project",
