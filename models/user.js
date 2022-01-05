@@ -112,6 +112,7 @@ const getUserByUuid = async (uuid) => {
                 "uuid": { $first: "$uuid" },
                 "username": {$first: "$username"},
                 "email": { $first: "$email" },
+                "password": {$first: "$password"},
                 "roles": { $push:  "$role.name" },
                 "permissions": {$push: "$role.permission.name"},
                 "revokedPermissions": { $first: "$revokedPermissions"},
@@ -153,17 +154,71 @@ const getUserByUuid = async (uuid) => {
 
 const getUserByEmail = async (email) => {
     try{
-        const result = await User.findOne({ "email": email }).populate("roles").exec()
-        if(!result){
+        const res  = await User.aggregate([
+            {$match: {"email": email} },
+            {$unwind: '$roles'},
+            {$lookup: {
+                from: 'roles',
+                localField: 'roles',
+                foreignField: '_id',
+                as: 'role'
+            }},
+            {$unwind: '$role'},
+            {$unwind: '$role.permissions'},
+            {$lookup: {
+                from: 'permissions',
+                localField: 'role.permissions',
+                foreignField: '_id',
+                as: 'role.permission'
+            }},
+            {$unwind: '$role.permission'},
+            {$group: {
+                "_id": "$_id",
+                "uuid": { $first: "$uuid" },
+                "username": {$first: "$username"},
+                "email": { $first: "$email" },
+                "password": {$first: "$password"},
+                "roles": { $push:  "$role.name" },
+                "permissions": {$push: "$role.permission.name"},
+                "revokedPermissions": { $first: "$revokedPermissions"},
+            }},
+            {$lookup: {
+                from: 'permissions',
+                let: {"arr": "$revokedPermissions"},
+                as: 'revokedPermissions',
+                pipeline: [
+                    {$match: {
+                        $expr: {
+                            $cond: [
+                                //if array has any elements...
+                                {$gte: [{$size: "$$arr"}, 1]},
+                                //...then lookup based on ids in array
+                                {$in: ["$_id", "$$arr"]},
+                                //...otherwise do nothing
+                                null
+                            ]
+                        }
+                    }},
+                    {$project: {
+                        "_id": 0,
+                        "name": "$name"
+                    }
+                    }
+                ]
+            }},
+        ]).exec()
+        if(!res || !res.length){
             return null
         }
         const user = {
-                "_id" : result._id,
-                "uuid" : result.uuid,
-                "username": result.username,
-                "email": result.email,
-                "password": result.password,
-                "roles": result.roles
+                "_id" : res[0]._id,
+                "uuid" : res[0].uuid,
+                "username": res[0].username,
+                "permissions": [...new Set(res[0].permissions)],
+                "revokedPermissions": res[0].revokedPermissions.map(permission => {return permission.name}),
+                "email": res[0].email,
+                "password": res[0].password,
+                "roles": [...new Set(res[0].roles)]
         }
         return user
     }catch(err){
