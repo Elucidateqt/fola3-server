@@ -1,15 +1,12 @@
-const mongoose = require('mongoose')
 const bcrypt = require('bcrypt')
 const { v4: uuidv4 } = require('uuid')
-mongoose.Promise = global.Promise
 
 const registry = require('../lib/registry')
 const logger = registry.getService('logger')
 const dbEvents = registry.createEventChannel('database')
 
-const db = {}
 
-db.mongoose = mongoose
+const db = {}
 
 db.permission = require('./permission')
 db.user = require('./user')
