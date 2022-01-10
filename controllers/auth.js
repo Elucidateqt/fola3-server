@@ -49,13 +49,7 @@ const signIn = async (req, res) => {
             });
         }
         const accessToken = await generateAccessToken(user.uuid)
-        const tokenId = uuidv4()
-        const refreshToken = jwt.sign({"uuid": user.uuid}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: parseInt(process.env.REFRESH_TOKEN_LIFETIME), jwtid: tokenId})
-        await redis.set(`sessions:${user.uuid}:${tokenId}`, JSON.stringify({"ip": req.ip, "token": refreshToken}),
-            {
-                EX: process.env.REFRESH_TOKEN_LIFETIME
-            }
-        )
+        const refreshToken = await generateRefreshToken(user.uuid)
         res.json({
             "message": "loginSuccessful",
             "refreshToken": refreshToken,
@@ -112,14 +106,15 @@ const refreshAccessToken = async (req, res) => {
 const generateRefreshToken = async (userId) => {
     try {
         const tokenId = uuidv4()
-        const refreshToken = jwt.sign({"uuid": data.uuid}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: parseInt(process.env.REFRESH_TOKEN_LIFETIME), jwtid: tokenId})
-        await redis.set(`sessions:${data.uuid}:${tokenId}`, JSON.stringify(refreshToken),
+        const refreshToken = jwt.sign({"uuid": userId}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: parseInt(process.env.REFRESH_TOKEN_LIFETIME), jwtid: tokenId})
+        await redis.set(`sessions:${userId}:${tokenId}`, JSON.stringify(refreshToken),
             {
                 EX: process.env.REFRESH_TOKEN_LIFETIME
             }
         )
+        return refreshToken
     } catch (err) {
-        throw new Error(`Error generating refreshtoken for user ${userId}`)
+        throw new Error(`Error generating refreshtoken for user ${userId}: ${err}`)
     }
 }
 
