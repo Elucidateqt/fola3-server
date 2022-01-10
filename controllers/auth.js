@@ -5,8 +5,9 @@ const db = require('../models')
 const User = db.user
 const Role = db.role
 const { validationResult } = require('express-validator')
-
 const registry = require('../lib/registry')
+const redis = registry.getService("redis")
+
 const logger = registry.getService('logger').child({ component: 'authController'})
 
 const signUp = async (req, res) => {
@@ -47,8 +48,14 @@ const signIn = async (req, res) => {
               message: "Invalid Password!"
             });
         }
-        const accessToken = await generateAccessToken(user.uuid),
-        refreshToken = jwt.sign({"uuid": user.uuid}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: process.env.REFRESH_TOKEN_LIFETIME})
+        const accessToken = await generateAccessToken(user.uuid)
+        const tokenId = uuidv4()
+        const refreshToken = jwt.sign({"uuid": user.uuid}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: parseInt(process.env.REFRESH_TOKEN_LIFETIME), jwtid: tokenId})
+        await redis.set(`sessions:${user.uuid}:${tokenId}`, JSON.stringify({"ip": req.ip, "token": refreshToken}),
+            {
+                EX: process.env.REFRESH_TOKEN_LIFETIME
+            }
+        )
         res.json({
             "message": "loginSuccessful",
             "refreshToken": refreshToken,
@@ -61,29 +68,68 @@ const signIn = async (req, res) => {
     }
 }
 
-const refreshAccessToken = (req, res) => {
-    const refreshToken = req.body.refreshToken
-    if(refreshToken){
-        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, data) =>{
+const signOut = async (req, res) => {
+    try{
+        const authHeader = req.headers['authorization']
+        const token = authHeader && authHeader.split(' ')[1]
+        if(token == null) return res.sendStatus(401)
+        jwt.verify(token,process.env.REFRESH_TOKEN_SECRET, async (err, data) => {
+            if(err){
+                logger.log("error", err)
+                return res.sendStatus(403)
+            }
+            await redis.del(`sessions:${data.uuid}:${data.jti}`)
+            logger.log("info", `User ${data.uuid} signed out`)
+            return res.sendStatus(204)
+        })
+    }catch(err){
+        logger.log('error', err)
+        return res.sendStatus(500)
+    }
+}
+
+const refreshAccessToken = async (req, res) => {
+    try{
+        const authHeader = req.headers['authorization']
+        const token = authHeader && authHeader.split(' ')[1]
+        if(token == null) return res.sendStatus(401)
+        jwt.verify(token,process.env.REFRESH_TOKEN_SECRET, async (err, data) => {
             if(err){
                 return res.sendStatus(403)
             }
+            await redis.del(`sessions:${data.uuid}:${data.jti}`)
             const accessToken = await generateAccessToken(data.uuid)
-            logger.log('info', `Access-Token refreshed by user ${data.uuid}`)
-            res.json({accessToken: accessToken})
+            const refreshToken = await generateRefreshToken(data.uuid)
+            logger.log('info', `Tokens refreshed by user ${data.uuid}`)
+            res.json({accessToken: accessToken, refreshToken: refreshToken})
         })
-    }else{
-        res.sendStatus(401)
+    }catch(err){
+        logger.log('error', err)
+        return res.sendStatus(500)
+    }
+}
+
+const generateRefreshToken = async (userId) => {
+    try {
+        const tokenId = uuidv4()
+        const refreshToken = jwt.sign({"uuid": data.uuid}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: parseInt(process.env.REFRESH_TOKEN_LIFETIME), jwtid: tokenId})
+        await redis.set(`sessions:${data.uuid}:${tokenId}`, JSON.stringify(refreshToken),
+            {
+                EX: process.env.REFRESH_TOKEN_LIFETIME
+            }
+        )
+    } catch (err) {
+        throw new Error(`Error generating refreshtoken for user ${userId}`)
     }
 }
 
 
 const generateAccessToken = async (uuid) => {
     try{
-        return jwt.sign({"uuid": uuid}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: process.env.ACCESS_TOKEN_LIFETIME})
+        return jwt.sign({"uuid": uuid}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: parseInt(process.env.ACCESS_TOKEN_LIFETIME), jwtid: uuidv4()})
     }catch(err){
         throw new Error(`Error generating accesstoken for user ${uuid}`)
     }
 }
 
-module.exports = { signUp, signIn, refreshAccessToken, generateAccessToken }
+module.exports = { signUp, signIn, signOut, refreshAccessToken, generateAccessToken }

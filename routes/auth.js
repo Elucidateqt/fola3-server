@@ -17,6 +17,8 @@ body('email').exists().isEmail().normalizeEmail(),
 body('password').exists().isLength({min: 5}),
 controller.signIn)
 
+router.post('/logout/me', controller.signOut)
+
 router.post('/refreshToken', controller.refreshAccessToken)
 
 module.exports = router

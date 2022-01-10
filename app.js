@@ -26,7 +26,7 @@ const { combine, timestamp, prettyPrint } = format;
 
 
 const initializeLogger = async () => {
-    const console = new transports.Console({level: 'info'})
+    const console = new transports.Console({level: 'debug'})
     const errorFile = new transports.File({level: 'error', filename: 'logs/errors.log'})
     const logger = createLogger({
         level: 'debug',
@@ -39,7 +39,8 @@ const initializeLogger = async () => {
             errorFile
         ],
         exceptionHandlers: [
-            console
+            console,
+            errorFile
         ]
     })
     
@@ -145,7 +146,7 @@ const connectMongoDB = async () => {
         })
     } catch (err) {
         console.log(`error: \n ${err}`)
-        process.exit()
+        process.exit(1)
         
     }
 
