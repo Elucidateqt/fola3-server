@@ -142,6 +142,9 @@ const getUserByUuid = async (uuid) => {
                 ]
             }},
     ]).exec()
+        if(res.length === 0){
+            return null
+        }
         const user = res[0]
         user.roles = [...new Set(user.roles)]
         user.permissions = [...new Set(user.permissions)]
@@ -400,7 +403,7 @@ const getUsersWithRole = async (rolename) => {
             {$group: {
                 "_id": "$_id",
                 "uuid": { "$first": "$uuid" },
-                "name": { "$first": "$name" },
+                "username": { "$first": "$username" },
                 "email": { "$first": "$email" },
                 "roles": {
                     "$push": "$roles.name"

@@ -5,9 +5,6 @@ const cors = require('cors')
 const mongoose = require('mongoose')
 mongoose.Promise = global.Promise
 const Port = process.env.PORT || 8081
-const SuperAdminName = process.env.ADMIN_ACC_USERNAME
-const SuperAdminPw = process.env.ADMIN_ACC_PW
-const SuperAdminMail = process.env.ADMIN_MAIL
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost'
 const REDIS_PORT = process.env.REDIS_PORT || 6379
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD || null
@@ -47,6 +44,25 @@ const initializeLogger = async () => {
     registry.registerLogger(logger)
     const myLogger = await registry.getService('logger').child({ component: 'app'})
     return myLogger
+}
+
+const initializeMonitoring = async () => {
+    try {
+        let tracker = {}
+        const promClient = require('prom-client')
+        const dataStore = new promClient.Registry()
+        const promBundle = require("express-prom-bundle");
+        const metricsMiddleware = promBundle({includeMethod: true, includePath: true, autoregister: false, promRegistry: dataStore});
+        app.use(metricsMiddleware)
+        tracker.client = promClient
+        tracker.dataStore = dataStore
+        const myTracker = registry.registerPrometheus(tracker)
+        return myTracker
+        
+    } catch (err) {
+        throw new Error(`Error initializing metrics tracker: \n ${err}`)
+        
+    }
 }
 
 const connectRedis = async () =>{
@@ -89,9 +105,17 @@ const connectMongoDB = async () => {
         await connectRedis()
         logger.log("info", `Successfully connected to Redis at ${REDIS_HOST}:${REDIS_PORT}`)
         const db = require('./models')
-        db.initialize(SuperAdminName, SuperAdminMail, SuperAdminPw) 
+        const prometheusUser = await db.initialize()
         const httpEvents = registry.createEventChannel('http')
+
+        const prometheus = await initializeMonitoring()
+        const authController = require('./controllers/auth')
+        const MetricsToken = await authController.generateAccessToken(prometheusUser.uuid)
+        logger.log('info', `Use this Bearer token for your Prometheus instance to scrape metrics from the endpoint /metrics: \n ${MetricsToken}`)
         
+        app.use(cors())
+        app.use(express.json())
+        app.use(express.urlencoded({extended: true}))
         
         
         /*httpEvents.on('httpRequestReceived', (method, url, params, body, timestamp) => {
@@ -105,22 +129,17 @@ const connectMongoDB = async () => {
         const roleRoute = require('./routes/roles')
         const permissionRoute = require('./routes/permissions')
         const bugreportRoute = require('./routes/bugreports')
-        
-        
-        app.use(cors())
-        app.use(express.json())
-        app.use(express.urlencoded({extended: true}))
-        
+
         
         //TODO: just for testing. remove
         const fireHttpEvent = (req, res, next) => {
             const method = req.method
             const url = req.url
-            const timestamp = new Date()
+            req.arrivedAt = new Date()
             const body = req.body
             const params = req.params
-            httpEvents.emit('httpRequestReceived', method, url, params, body, timestamp)
-            logger.log('http', `request received: method: ${method} url: ${url} timestamp: ${timestamp}`)
+            httpEvents.emit('httpRequestReceived', method, url, params, body, req.arrivedAt)
+            logger.log('http', `request received: method: ${method} url: ${url} timestamp: ${req.arrivedAt}`)
             next()
         }
         app.use(fireHttpEvent)
@@ -129,6 +148,13 @@ const connectMongoDB = async () => {
         app.get('/health', function (req, res) {
             res.sendStatus(204);
         })
+
+        const middleware = require('./middleware')
+        app.get('/metrics', middleware.auth.authenticateToken, middleware.auth.authenticatePermission('API:METRICS:READ'), async (req, res) => {
+            const metrics = await prometheus.dataStore.metrics()
+            res.set('Content-Type', prometheus.dataStore.contentType)
+            res.end(metrics)
+        })
         
         app.use("/auth", authRoute)
         app.use("/roles", roleRoute)
@@ -136,13 +162,23 @@ const connectMongoDB = async () => {
         app.use("/users", userRoute)
         app.use("/projects", projectRoute)
         app.use("/bugreports", bugreportRoute)
-        
-        
-        
-        
+
         server = http.createServer(app)
         server.listen(Port, () => {
             logger.log('info', `Server running on Port ${Port}`)
+        })
+        // Graceful shutdown
+        process.on('SIGTERM', () => {
+            clearInterval(prometheus.client)
+        
+            server.close((err) => {
+            if (err) {
+                logger.log("error", err)
+                process.exit(1)
+            }
+        
+            process.exit(0)
+            })
         })
     } catch (err) {
         console.log(`error: \n ${err}`)

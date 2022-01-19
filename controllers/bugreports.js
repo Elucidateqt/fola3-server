@@ -1,64 +1,74 @@
 const db = require('../models')
 const { v4: uuidv4 } = require('uuid')
-const User = db.user
 const Report = db.bugreport
 const { validationResult } = require('express-validator')
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'projectController' })
 
-const createBugreport = async (req, res) => {
+const createBugreport = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return next()
     }
     try{
-        const bugreport = await Report.createBugreport(uuidv4(), req.user._id, req.body.trackerVisitorId, req.body.report)
+        const bugreport = await Report.createBugreport(uuidv4(), req.locals.user._id, req.body.trackerVisitorId, req.body.report)
         res.sendStatus(204)
-        logger.log("info", `Bugreport created by user ${req.user.uuid}`)
+        logger.log("info", `Bugreport created by user ${req.locals.user.uuid}`)
+        next()
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
+        next()
     }
 }
 
-const getBugreport = async (req, res) => {
+const getBugreport = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()){
-        return res.status(400).json({ errors: errors.array() })
+        res.status(400).json({ errors: errors.array() })
+        return next()
     }
     try{
         let bugreport = await Report.getBugreport(req.params.reportId)
-        logger.log("info", `Bugreport ${bugreport.uuid} retrieved for user ${req.user.uuid}`)
-        return res.status(200).send({"report": bugreport})
+        logger.log("info", `Bugreport ${bugreport.uuid} retrieved for user ${req.locals.user.uuid}`)
+        res.status(200).send({"report": bugreport})
+        next()
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
+        next()
     }
 }
 
-const getAllBugreports = async (req, res) => {
+const getAllBugreports = async (req, res, next) => {
     try {
         const bugreports = await Report.getAllBugreports()
         res.status(200).send({"reports": bugreports})
-        logger.log("info", `User ${req.user.uuid} loaded all bugreports`)
+        logger.log("info", `User ${req.locals.user.uuid} loaded all bugreports`)
+        next()
     } catch (err) {
         logger.log("error", err)
         res.sendStatus(500)
+        next()
     }
 }
 
-const deleteBugreport = async (req, res) => {
+const deleteBugreport = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()){
-        return res.status(400).json({ errors: errors.array() })
+        res.status(400).json({ errors: errors.array() })
+        return next()
     }
     try {
         await Report.deleteBugreport(req.params.reportId)
         res.sendStatus(204)
-        logger.log("info", `User ${req.user.uuid} deleted bugreport ${req.params.reportId}`)
+        logger.log("info", `User ${req.locals.user.uuid} deleted bugreport ${req.params.reportId}`)
+        next()
     } catch (err) {
         logger.log("error", err)
         res.sendStatus(500)
+        next()
     }
 }
 

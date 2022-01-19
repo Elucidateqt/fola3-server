@@ -13,6 +13,7 @@ router.post('/', authWare.authenticateToken, authWare.authenticatePermission("RO
 body('name').exists().isString().trim().custom(roleWare.isNewRole),
 body('scope').exists().isString().trim().isIn(["global", "project"]),
 body('permissions').exists().isArray().custom(authWare.userHasAllPermissions),
+body('permissions.*').isUUID(),
 controller.createRole)
 
 router.put('/:roleId', authWare.authenticateToken, authWare.authenticatePermission("ROLES:UPDATE"),

@@ -8,10 +8,11 @@ const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: "User-Controller" })
 const { validationResult } = require('express-validator')
 
-exports.createUser = async (req, res) => {
+exports.createUser = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return next()
     }
     try{
         //use user-role as default-case
@@ -19,111 +20,133 @@ exports.createUser = async (req, res) => {
         const roleId = await Role.getRoleIdByName(roleName)
         const user = await User.createUser(uuidv4(), req.body.username, req.body.email, bcrypt.hashSync(req.body.password,10), roleId)
         res.status(200).send({ "message": "userCreated", "user": user })
+        logger.log("info", `Successfully created user ${user.username}`)
+        next()
     }catch(err){
-        console.error(`Error creating User in Authcontroller: \n ${err}`)
+        logger.log("error",`Error creating User in Authcontroller: \n ${err}`)
+        res.sendStatus(500)
+        next()
     }
 
 }
 
-exports.getUser = async (req, res) => {
+exports.getUser = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return next()
     }
     try{
         let user = await User.getUserByUuid(req.params.userId)
         //remove internal id
         delete user._id
         res.status(200).send({"user": user})
-        logger.log("info", `Retrieved User ${req.params.userId} for user ${req.user.uuid}`)
+        logger.log("info", `Retrieved User ${req.params.userId} for user ${req.locals.user.uuid}`)
+        next()
     }catch(err){
         logger.log("error", `Error retrieving User ${req.params.userId}: \n ${err}`)
         res.sendStatus(500)
+        next()
     }
 }
 
-exports.getAllUsers = async (req, res) => {
+exports.getAllUsers = async (req, res, next) => {
     try{
         const users = await User.getAllUsers()
         let userList = []
         users.forEach(user => userList.push({"uuid": user.uuid, "username": user.username, "email": user.email, "roles": user.roles}))
         res.send({ "userList": userList })
-        logger.log("info", `Retrieved all users for user ${req.user.uuid}`)
+        logger.log("info", `Retrieved all users for user ${req.locals.user.uuid}`)
+        next()
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
+        next()
     }
 }
 
-exports.updateUser = async (req, res) => {
+exports.updateUser = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return next()
     }
     try{
         await User.updateUser(req.params.userId, req.body.username, req.body.email)
         res.sendStatus(204)
-        logger.log("info", `User ${req.user.uuid} has updated profile of user ${req.params.userId}.`)
+        logger.log("info", `User ${req.locals.user.uuid} has updated profile of user ${req.params.userId}.`)
+        next()
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
+        next()
     }
 }
 
-exports.updateUserRoles = async (req, res) => {
+exports.updateUserRoles = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return next()
     }
     try{
         let roleIds = req.targetRoles.map(role => {return role._id})
         await User.updateUserRoles(req.params.userId, roleIds)
         res.sendStatus(204)
-        logger.log("info", `User ${req.user.uuid} updated roles of user ${req.params.userId}`)
+        logger.log("info", `User ${req.locals.user.uuid} updated roles of user ${req.params.userId}`)
+        next()
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
+        next()
     }
 }
 
-exports.revokeUserPermissions = async (req, res) => {
+exports.revokeUserPermissions = async (req, res, next) => {
     const errors = validationResult(req)
     if(!errors.isEmpty()){
-        return res.status(400).json({ errors: errors.array() });  
+        res.status(400).json({ errors: errors.array() });  
+        return next()
     }
     try{
         const permissions = await Permission.getPermissionsByUuidList(req.body.permissions)
         const permissionIds = permissions.map(permission => {return permission._id})
         await User.addPermissionsToBlacklist(req.params.userId, permissionIds)
         res.sendStatus(204)
-        logger.log("info", `User ${req.user.uuid} revoked permissions of user ${req.params.userId}`)
+        logger.log("info", `User ${req.locals.user.uuid} revoked permissions of user ${req.params.userId}`)
+        next()
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
+        next()
     }
 }
 
-exports.setRevokedPermissions = async (req, res) => {
+exports.setRevokedPermissions = async (req, res, next) => {
     const errors = validationResult(req)
     if(!errors.isEmpty()){
-        return res.status(400).json({ errors: errors.array() });  
+        res.status(400).json({ errors: errors.array() });
+        return next()
     }
     try{
         const permissions = await Permission.getPermissionsByUuidList(req.body.permissions)
         const permissionIds = permissions.map(permission => {return permission._id})
         await User.setPermissionBlacklist(req.params.userId, permissionIds)
         res.sendStatus(204)
-        logger.log("info", `User ${req.user.uuid} revoked permissions of user ${req.params.userId}`)
+        logger.log("info", `User ${req.locals.user.uuid} revoked permissions of user ${req.params.userId}`)
+        next()
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
+        next()
     }
 }
 
-exports.removeRevokedPermission = async (req, res) => {
+exports.removeRevokedPermission = async (req, res, next) => {
     const errors = validationResult(req)
     if(!errors.isEmpty()){
-        return res.status(400).json({ errors: errors.array() });  
+        res.status(400).json({ errors: errors.array() });  
+        return next()
     }
     try{
         const permissions = await Permission.getPermissionsByUuidList([req.params.permissionId])
@@ -131,38 +154,46 @@ exports.removeRevokedPermission = async (req, res) => {
         console.log("permissionIds", permissionIds)
         await User.removePermissionsFromBlacklist(req.params.userId, permissionIds)
         res.sendStatus(204)
-        logger.log("info", `User ${req.user.uuid} removed revoked permissions of user ${req.params.userId}`)
+        logger.log("info", `User ${req.locals.user.uuid} removed revoked permissions of user ${req.params.userId}`)
+        next()
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
+        next()
     }
 }
 
-exports.updatePassword = async (req, res) => {
+exports.updatePassword = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return next()
     }
     try{
         await User.updateUserPassword(req.params.userId, bcrypt.hashSync(req.body.password,10))
         res.sendStatus(204)
-        logger.log('info', `User ${req.user.uuid} changed password of user ${req.params.userId}.`)
+        logger.log('info', `User ${req.locals.user.uuid} changed password of user ${req.params.userId}.`)
+        next()
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
+        next()
     }
 }
 
-exports.deleteUser = async (req, res) => {
+exports.deleteUser = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400).json({ errors: errors.array() });
+      return next()
     }
     try{
         User.deleteUser(req.params.userId)
         res.sendStatus(204)
+        next()
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
+        next()
     }
 }

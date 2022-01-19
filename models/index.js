@@ -5,6 +5,14 @@ const registry = require('../lib/registry')
 const logger = registry.getService('logger')
 const dbEvents = registry.createEventChannel('database')
 
+const SUPER_ADMIN_NAME = process.env.ADMIN_ACC_USERNAME || 'admin'
+const SUPER_ADMIN_PW = process.env.ADMIN_ACC_PW || 'admin'
+const SUPER_ADMIN_EMAIL = process.env.ADMIN_MAIL || 'superadmin@apiTest.com'
+
+const PROMETHEUS_USERNAME = process.env.prometheus_username || 'Prometheus'
+const PROMETHEUS_PASSWORD = process.env.prometheus_password || '123456'
+const PROMETHEUS_EMAIL = process.env.prometheus_mail || 'prometheus@apiTest.com'
+
 
 const db = {}
 
@@ -13,15 +21,19 @@ db.user = require('./user')
 db.role = require('./role')
 db.project = require('./project')
 db.bugreport = require('./bugreport')
-db.ROLES = { "USER": "user", "ADMIN" : "admin", "SUPER_ADMIN" : "super admin"}
 
-const PERMISSIONS = ["USERS:CREATE",  "USERS:VIEW", "USERS:PROFILE:UPDATE", "USERS:PASSWORD:UPDATE", "USERS:ROLES:UPDATE", "USERS:PERMISSIONBLACKLIST:MANAGE", "USERS:DELETE", "PROJECT:CREATE", "PROJECTS:VIEW", "PROJECT:MANAGE", "PROJECT:DELETE", "BUGREPORT:CREATE", "BUGREPORTS:READ", "BUGREPORT:DELETE", "ROLES:CREATE", "ROLES:GRANT", "ROLES:REVOKE", "ROLES:VIEW", "ROLES:UPDATE", "ROLES:DELETE", "PERMISSIONS:CREATE", "PERMISSIONS:VIEW", "PERMISSIONS:UPDATE", "PERMISSIONS:GRANT", "PERMISSIONS:REVOKE", "PERMISSIONS:DELETE"]
+const PERMISSIONS = ["USERS:CREATE",  "USERS:VIEW", "USERS:PROFILE:UPDATE", "USERS:PASSWORD:UPDATE", "USERS:ROLES:UPDATE", "USERS:PERMISSIONBLACKLIST:MANAGE", "USERS:DELETE", "PROJECT:CREATE", "PROJECTS:VIEW", "PROJECT:MANAGE", "PROJECT:DELETE", "BUGREPORT:CREATE", "BUGREPORTS:READ", "BUGREPORT:DELETE", "ROLES:CREATE", "ROLES:GRANT", "ROLES:REVOKE", "ROLES:VIEW", "ROLES:UPDATE", "ROLES:DELETE", "PERMISSIONS:CREATE", "PERMISSIONS:VIEW", "PERMISSIONS:UPDATE", "PERMISSIONS:GRANT", "PERMISSIONS:REVOKE", "PERMISSIONS:DELETE", "API:METRICS:READ"]
 
-const BASE_ROLES = [
+db.BASE_ROLES = [
     {
         "rolename": "super admin",
         "permissions": PERMISSIONS,
         "scope": 'global'
+    },
+    {
+        "rolename": "metrics collector",
+        "permissions": ["API:METRICS:READ"],
+        "scope": "global"
     },
     {
         "rolename": "admin",
@@ -50,7 +62,7 @@ const BASE_ROLES = [
     }
 ]
 
-db.initialize = async (SuperAdminName, SuperAdminMail, SuperAdminPw) => {
+db.initialize = async () => {
     try{
         //check if permissions for basic functionality exist in db and add them otherwise
         const permissionCount =  await db.permission.getPermissionCount()
@@ -66,7 +78,7 @@ db.initialize = async (SuperAdminName, SuperAdminMail, SuperAdminPw) => {
         const roleCount = await db.role.getRoleCount()
         if(roleCount === 0){
             logger.log("info","no roles found. creating roles...")
-            for (const role of Object.values(BASE_ROLES)) {
+            for (const role of Object.values(db.BASE_ROLES)) {
                 const permissions = await db.permission.getPermissionsByNameList(role.permissions)
                 const permissionIds = []
                 permissions.forEach(permission => permissionIds.push(permission._id))
@@ -79,13 +91,23 @@ db.initialize = async (SuperAdminName, SuperAdminMail, SuperAdminPw) => {
         if(userCount === 0){
             logger.log("info","no users found in DB. creating super user based on .env file...")
             const roleIds = []
-            for (const role of Object.values(BASE_ROLES)){
+            for (const role of Object.values(db.BASE_ROLES)){
                 const permissionId = await db.role.getRoleIdByName(role.rolename)
                 roleIds.push(permissionId)
             }
-            const user = await db.user.createUser(uuidv4(), SuperAdminName, SuperAdminMail, bcrypt.hashSync(SuperAdminPw,10), roleIds)
+            const user = await db.user.createUser(uuidv4(), SUPER_ADMIN_NAME, SUPER_ADMIN_EMAIL, bcrypt.hashSync(SUPER_ADMIN_PW,10), roleIds)
             logger.log("info", "Super User created successfully")
         }
+        let metricsUsers = await db.user.getUsersWithRole('metrics collector')
+        let prometheusUser =  metricsUsers.find(user => user.username === PROMETHEUS_USERNAME)
+        if(prometheusUser !== undefined){
+            return prometheusUser
+        }
+        logger.log('info',"User for Prometheus scraping not found. Creating user...")
+        const roleId = await db.role.getRoleIdByName('metrics collector')
+        prometheusUser = await db.user.createUser(uuidv4(), PROMETHEUS_USERNAME, PROMETHEUS_EMAIL, bcrypt.hashSync(PROMETHEUS_PASSWORD, 10), [roleId])
+        logger.log("info","Prometeus user created successfully")
+        return prometheusUser
     }catch(err){
         logger.log('error', err)
     }
