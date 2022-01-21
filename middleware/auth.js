@@ -6,25 +6,30 @@ const Role = db.role
 const User = db.user
 const Permission = db.permission
 const controller = require('../controllers/auth')
+const registry = require('./../lib/registry')
+const logger = registry.getService('logger').child({ component: "Auth Middleware" })
 
 exports.authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization']
     const token = authHeader && authHeader.split(' ')[1]
-    if(token == null) return res.sendStatus(401)
-
+    if(token == null){
+      return res.sendStatus(401)
+    }
     jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, async (err, data) => {
-        if(err){
-            return res.sendStatus(403)
-        }
-        if(!req.locals){
-          req.locals = {}
-        }
-        const user = await User.getUserByUuid(data.uuid)
-        if(user === null){
+      if(err){
+          logger.log('error', `Error verifying token: \n ${err}`)
           return res.sendStatus(403)
-        }
-        req.locals.user = user
-        next()
+      }
+      if(!req.locals){
+        req.locals = {}
+      }
+      const user = await User.getUserByUuid(data.uuid)
+      if(user === null){
+        logger.error('Error verifying token: User no longer exists')
+        return res.sendStatus(403)
+      }
+      req.locals.user = user
+      next()
     })
 }
 

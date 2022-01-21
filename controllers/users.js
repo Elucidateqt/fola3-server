@@ -5,6 +5,7 @@ const Permission = db.permission
 const { v4: uuidv4 } = require('uuid')
 const bcrypt = require('bcrypt')
 const registry = require('../lib/registry')
+const redis = registry.getService('redis')
 const logger = registry.getService('logger').child({ component: "User-Controller" })
 const { validationResult } = require('express-validator')
 
@@ -188,12 +189,24 @@ exports.deleteUser = async (req, res, next) => {
       return next()
     }
     try{
-        User.deleteUser(req.params.userId)
+        await User.deleteUser(req.params.userId)
         res.sendStatus(204)
         next()
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
         next()
+    }
+}
+
+exports.deleteTokenBearer = async (req, res, next) => {
+    try{
+        await User.deleteUser(req.locals.user.uuid)
+        await redis.del(`sessions:${req.locals.user.uuid}:*`)
+        res.sendStatus(204)
+        logger.info(`User ${req.locals.user.username} deleted own account.`)
+    }catch(err){
+        logger.log("error", err)
+        res.sendStatus(500)
     }
 }

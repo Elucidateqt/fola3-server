@@ -53,9 +53,15 @@ router.get('/:userId', authWare.authenticateToken, authWare.authenticatePermissi
 param('userId').trim().isUUID().withMessage('must be valid UUID'),
 controller.getUser)
 
+
+router.delete('/me', authWare.authenticateToken, controller.deleteTokenBearer)
+
 //TODO: add cascading delete for projects
 router.delete('/:userId', authWare.authenticateToken, authWare.authenticatePermission("USERS:DELETE"),
 param('userId').trim().isUUID().withMessage('must be valid UUID'),
 controller.deleteUser)
+
+
+
 
 module.exports = router
