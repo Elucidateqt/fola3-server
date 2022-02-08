@@ -420,4 +420,14 @@ const getUsersWithRole = async (rolename) => {
     }
 }
 
-module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByUuids, getUsersByEmail, deleteUser, addPermissionsToBlacklist, removePermissionsFromBlacklist, setPermissionBlacklist, getUserCount, createUser, updateUser, updateUserPassword, updateUserRoles, giveUserMultipleRoles, getUsersWithRole, usernameExists, emailExists }
+const getUserPermissions = async (uuid) => {
+    try {
+        const user = await getUserByUuid(uuid)
+        const permissions = user.permissions.filter(permission => !user.revokedPermissions.includes(permission))
+        return permissions
+    } catch (err) {
+        throw new Error(`Error loading permissions for user ${uuid} from DB: \n ${err}`)
+    }
+}
+
+module.exports = { getAllUsers, getUserByUuid, getUserByEmail, getUsersByUuids, getUsersByEmail, deleteUser, addPermissionsToBlacklist, removePermissionsFromBlacklist, setPermissionBlacklist, getUserCount, createUser, updateUser, updateUserPassword, updateUserRoles, giveUserMultipleRoles, getUsersWithRole, getUserPermissions, usernameExists, emailExists }

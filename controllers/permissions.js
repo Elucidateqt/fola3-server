@@ -1,6 +1,7 @@
 
 const db = require('../models')
 const Permission = db.permission
+const User = db.user
 const registry = require('../lib/registry')
 const { v4: uuidv4 } = require('uuid')
 const logger = registry.getService('logger').child({ component: 'PermissionController'})
@@ -41,5 +42,18 @@ exports.deletePermission = async (req, res, next) => {
         logger.log('error', err)
         res.sendStatus(500)
         next()
+    }
+}
+
+exports.getUserPermissions = async (req, res, next) => {
+    try {
+        const permissions = await User.getUserPermissions(req.locals.user.uuid)
+        res.json({"permissions": permissions})
+        next()
+    } catch (err) {
+        logger.log('error', err)
+        res.sendStatus(500)
+        next()
+        
     }
 }
