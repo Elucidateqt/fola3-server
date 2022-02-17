@@ -49,7 +49,9 @@ controller.removeRevokedPermission)
 //TODO: add pagination
 router.get('/', authWare.authenticateToken, authWare.authenticatePermission("USERS:VIEW"), controller.getAllUsers)
 
-router.get('/:userId', authWare.authenticateToken, authWare.authenticatePermission("USERS:VIEW"),
+router.get('/me', authWare.authenticateToken, controller.getTokenBearer)
+
+router.get('/:userId', authWare.authenticateToken,
 param('userId').trim().isUUID().withMessage('must be valid UUID'),
 controller.getUser)
 

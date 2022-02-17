@@ -116,6 +116,7 @@ const getUserByUuid = async (uuid) => {
                 "roles": { $push:  "$role.name" },
                 "permissions": {$push: "$role.permission.name"},
                 "revokedPermissions": { $first: "$revokedPermissions"},
+                "createdAt": { $first: "$createdAt"}
             }},
             {$lookup: {
                 from: 'permissions',
@@ -184,6 +185,7 @@ const getUserByEmail = async (email) => {
                 "roles": { $push:  "$role.name" },
                 "permissions": {$push: "$role.permission.name"},
                 "revokedPermissions": { $first: "$revokedPermissions"},
+                "createdAt": { $first: "$createdAt"}
             }},
             {$lookup: {
                 from: 'permissions',

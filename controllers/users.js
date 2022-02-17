@@ -38,9 +38,19 @@ exports.getUser = async (req, res, next) => {
       return next()
     }
     try{
+        const requestUserPermissions = req.locals.user.permissions.filter(permission => !req.locals.user.revokedPermissions.includes(permission))
         let user = await User.getUserByUuid(req.params.userId)
-        //remove internal id
+        //remove data based on requester
         delete user._id
+        delete user.password
+        user.permissions = user.permissions.filter(permission => !user.revokedPermissions.includes(permission))
+        delete user.revokedPermissions
+        //TODO: test this
+        if(user.uuid !== req.locals.user.uuid && !requestUserPermissions.includes('USERS:MANAGE')){
+            delete user.permissions
+            delete user.email
+            delete user.roles
+        }
         res.status(200).send({"user": user})
         logger.log("info", `Retrieved User ${req.params.userId} for user ${req.locals.user.uuid}`)
         next()
@@ -55,7 +65,7 @@ exports.getAllUsers = async (req, res, next) => {
     try{
         const users = await User.getAllUsers()
         let userList = []
-        users.forEach(user => userList.push({"uuid": user.uuid, "username": user.username, "email": user.email, "roles": user.roles}))
+        users.forEach(user => userList.push({"uuid": user.uuid, "username": user.username}))
         res.send({ "userList": userList })
         logger.log("info", `Retrieved all users for user ${req.locals.user.uuid}`)
         next()
@@ -63,6 +73,20 @@ exports.getAllUsers = async (req, res, next) => {
         logger.log("error", err)
         res.sendStatus(500)
         next()
+    }
+}
+
+exports.getTokenBearer = async (req, res, next) => {
+    try {
+        let user = await User.getUserByUuid(req.locals.user.uuid)
+        delete user._id
+        delete user.password
+        user.permissions = user.permissions.filter(permission => !user.revokedPermissions.includes(permission))
+        delete user.revokedPermissions
+        res.json({ "user": user })
+    } catch (err) {
+        logger.log("error", err)
+        res.sendStatus(500)
     }
 }
 
