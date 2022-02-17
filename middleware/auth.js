@@ -23,26 +23,36 @@ exports.authenticateToken = (req, res, next) => {
       if(!req.locals){
         req.locals = {}
       }
-      const user = await User.getUserByUuid(data.uuid)
-      if(user === null){
-        logger.error('Error verifying token: User no longer exists')
-        return res.sendStatus(403)
+      try {
+        const user = await User.getUserByUuid(data.uuid)
+        if(user === null){
+          logger.error('Error verifying token: User no longer exists')
+          return res.sendStatus(403)
+        }
+        req.locals.user = user
+        next()
       }
-      req.locals.user = user
-      next()
+      catch (err) {
+        logger.log("error", `Error loading bearer in middleware: ${err}`)
+        return res.sendStatus(500)
+      }
     })
 }
 
 exports.authenticatePermission = (permission) => {
-  return async (req,res,next) => {
+  return (req,res,next) => {
+    if(!req.locals.user){
+      logger.log("error", `No user found while authenticating permission`)
+      return res.sendStatus(500)
+    }
     let userPermissions = req.locals.user.permissions
     if(!req.locals.user.roles.includes("super admin")){
       userPermissions = req.locals.user.permissions.filter(permission => !req.locals.user.revokedPermissions.includes(permission))
     }
-    if(userPermissions.includes(permission)){
-      return next()
+    if(!userPermissions.includes(permission)){
+      return res.sendStatus(401)
     }
-    return res.sendStatus(401)
+    next()
   }
 }
 

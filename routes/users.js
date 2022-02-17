@@ -12,6 +12,11 @@ body('password').exists().isString().isLength({min: 5}),
 body('username').exists().isString().isLength({min: 3, max: 16}).isAlpha('en-US', {ignore: ' '}).custom(userWare.checkDuplicateUsername),
 controller.createUser)
 
+
+router.put('/me/password', authWare.authenticateToken,
+body('password').exists().isString().trim().isLength({min: 5}),
+controller.updateBearerPassword)
+
 router.put('/:userId/profile', authWare.authenticateToken, authWare.authenticatePermission("USERS:PROFILE:UPDATE"), 
 param('userId').trim().isUUID().withMessage('must be valid UUID'),
 body('username').exists().isString().trim().isLength({min: 3, max: 16}).isAlpha(),

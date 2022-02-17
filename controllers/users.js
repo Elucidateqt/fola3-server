@@ -13,7 +13,7 @@ exports.createUser = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
-      return next()
+      return
     }
     try{
         //use user-role as default-case
@@ -22,11 +22,9 @@ exports.createUser = async (req, res, next) => {
         const user = await User.createUser(uuidv4(), req.body.username, req.body.email, bcrypt.hashSync(req.body.password,10), roleId)
         res.status(200).send({ "message": "userCreated", "user": user })
         logger.log("info", `Successfully created user ${user.username}`)
-        next()
     }catch(err){
         logger.log("error",`Error creating User in Authcontroller: \n ${err}`)
         res.sendStatus(500)
-        next()
     }
 
 }
@@ -35,7 +33,7 @@ exports.getUser = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
-      return next()
+      return 
     }
     try{
         const requestUserPermissions = req.locals.user.permissions.filter(permission => !req.locals.user.revokedPermissions.includes(permission))
@@ -53,11 +51,9 @@ exports.getUser = async (req, res, next) => {
         }
         res.status(200).send({"user": user})
         logger.log("info", `Retrieved User ${req.params.userId} for user ${req.locals.user.uuid}`)
-        next()
     }catch(err){
         logger.log("error", `Error retrieving User ${req.params.userId}: \n ${err}`)
         res.sendStatus(500)
-        next()
     }
 }
 
@@ -68,11 +64,9 @@ exports.getAllUsers = async (req, res, next) => {
         users.forEach(user => userList.push({"uuid": user.uuid, "username": user.username}))
         res.send({ "userList": userList })
         logger.log("info", `Retrieved all users for user ${req.locals.user.uuid}`)
-        next()
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
-        next()
     }
 }
 
@@ -94,17 +88,17 @@ exports.updateUser = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
-      return next()
+      return 
     }
     try{
         await User.updateUser(req.params.userId, req.body.username, req.body.email)
         res.sendStatus(204)
         logger.log("info", `User ${req.locals.user.uuid} has updated profile of user ${req.params.userId}.`)
-        next()
+        
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
-        next()
+        
     }
 }
 
@@ -112,18 +106,18 @@ exports.updateUserRoles = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
-      return next()
+      return 
     }
     try{
         let roleIds = req.targetRoles.map(role => {return role._id})
         await User.updateUserRoles(req.params.userId, roleIds)
         res.sendStatus(204)
         logger.log("info", `User ${req.locals.user.uuid} updated roles of user ${req.params.userId}`)
-        next()
+        
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
-        next()
+        
     }
 }
 
@@ -131,7 +125,7 @@ exports.revokeUserPermissions = async (req, res, next) => {
     const errors = validationResult(req)
     if(!errors.isEmpty()){
         res.status(400).json({ errors: errors.array() });  
-        return next()
+        return 
     }
     try{
         const permissions = await Permission.getPermissionsByUuidList(req.body.permissions)
@@ -139,11 +133,11 @@ exports.revokeUserPermissions = async (req, res, next) => {
         await User.addPermissionsToBlacklist(req.params.userId, permissionIds)
         res.sendStatus(204)
         logger.log("info", `User ${req.locals.user.uuid} revoked permissions of user ${req.params.userId}`)
-        next()
+        
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
-        next()
+        
     }
 }
 
@@ -151,7 +145,7 @@ exports.setRevokedPermissions = async (req, res, next) => {
     const errors = validationResult(req)
     if(!errors.isEmpty()){
         res.status(400).json({ errors: errors.array() });
-        return next()
+        return 
     }
     try{
         const permissions = await Permission.getPermissionsByUuidList(req.body.permissions)
@@ -159,11 +153,9 @@ exports.setRevokedPermissions = async (req, res, next) => {
         await User.setPermissionBlacklist(req.params.userId, permissionIds)
         res.sendStatus(204)
         logger.log("info", `User ${req.locals.user.uuid} revoked permissions of user ${req.params.userId}`)
-        next()
     }catch(err){
         logger.log('error', err)
-        res.sendStatus(500)
-        next()
+        res.sendStatus(500) 
     }
 }
 
@@ -171,7 +163,7 @@ exports.removeRevokedPermission = async (req, res, next) => {
     const errors = validationResult(req)
     if(!errors.isEmpty()){
         res.status(400).json({ errors: errors.array() });  
-        return next()
+        return
     }
     try{
         const permissions = await Permission.getPermissionsByUuidList([req.params.permissionId])
@@ -180,29 +172,40 @@ exports.removeRevokedPermission = async (req, res, next) => {
         await User.removePermissionsFromBlacklist(req.params.userId, permissionIds)
         res.sendStatus(204)
         logger.log("info", `User ${req.locals.user.uuid} removed revoked permissions of user ${req.params.userId}`)
-        next()
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
-        next()
+    }
+}
+
+exports.updateBearerPassword = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return
+    }
+    try{
+        await User.updateUserPassword(req.locals.user.uuid, bcrypt.hashSync(req.body.password,10))
+        logger.log('info', `User ${req.locals.user.uuid} changed own password.`)
+        res.sendStatus(204)
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
     }
 }
 
 exports.updatePassword = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return next()
+      return res.status(400).json({ errors: errors.array() });
     }
     try{
         await User.updateUserPassword(req.params.userId, bcrypt.hashSync(req.body.password,10))
         res.sendStatus(204)
         logger.log('info', `User ${req.locals.user.uuid} changed password of user ${req.params.userId}.`)
-        next()
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
-        next()
     }
 }
 
@@ -210,16 +213,14 @@ exports.deleteUser = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
-      return next()
+      return 
     }
     try{
         await User.deleteUser(req.params.userId)
         res.sendStatus(204)
-        next()
     }catch(err){
         logger.log("error", err)
         res.sendStatus(500)
-        next()
     }
 }
 
