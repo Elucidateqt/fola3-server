@@ -9,9 +9,13 @@ const Bugreport = new mongoose.model(
             type: String,
             required: true
         },
-        "trackerVisitorId": {
+        "category": {
             type: String,
-            default: null
+            default: "none"
+        },
+        "location": {
+            type: String,
+            required: true,
         },
         //used for analytics (f.e. finding accounts that spam-report)
         "author": {
@@ -19,7 +23,11 @@ const Bugreport = new mongoose.model(
             ref: "User",
             required: true
         },
-        "reportText": {
+        "summary": {
+            type: String,
+            required: true
+        },
+        "description": {
             type: String,
             required: true
         }
@@ -27,20 +35,22 @@ const Bugreport = new mongoose.model(
     { timestamps: true })
 )
 
-const createBugreport = async (uuid, userId, trackerVisitorId, reportText) => {
+const createBugreport = async (uuid, userId, location, summary, description) => {
     try{
         const report = await new Bugreport({
             "uuid": uuid,
             "author": userId,
-            "trackerVisitorId": trackerVisitorId,
-            "reportText": reportText
+            "location": location,
+            "summary": summary,
+            "description": description
         }).save();
         return {
             "_id" : report._id,
             "uuid" : report.uuid,
             "author" : report.author,
-            "trackerVisitorId" : report.trackerVisitorId,
-            "reportText": report.reportText
+            "location": report.location,
+            "summary": report.summary,
+            "description": report.description
         }
     }catch(err){
         throw new Error(`Error creating bugreport in DB: ${err}`)

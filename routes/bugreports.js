@@ -6,7 +6,9 @@ const controller = require('../controllers/bugreports')
 const { body, param } = require('express-validator');
 
 router.post('/', authWare.authenticateToken, authWare.authenticatePermission('BUGREPORT:CREATE'),
-body('report').exists().isString().trim().isLength({min: 10, max: 512}).escape(),
+body('location').exists().isString().trim().isIn(["Home Screen", "Collection", "Projects", "User Profile"]),
+body('summary').exists().isString().trim().isLength({min: 10, max: 128}).escape(),
+body('description').exists().isString().trim().isLength({min: 10, max: 512}).escape(),
 controller.createBugreport)
 
 router.get('/', authWare.authenticateToken, authWare.authenticatePermission('BUGREPORTS:READ'), controller.getAllBugreports)
