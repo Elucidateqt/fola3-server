@@ -42,7 +42,9 @@ const createProject = async (uuid, name, description, creatorId, creatorRoleIds)
             "uuid" : project.uuid,
             "name" : project.name,
             "description" : project.description,
-            "members": [{"uuid": creatorId, "roles": creatorRoleIds }]
+            "members": [{"uuid": creatorId, "roles": creatorRoleIds }],
+            "createdAt": project.createdAt,
+            "updatedAt": project.updatedAt
         }
     }catch(err){
         throw new Error(`Error creating project in DB: ${err}`)
@@ -80,19 +82,23 @@ const getProjectByUuid = async (uuid) => {
                 "projectroles": {$push: "$member.roledoc.name"},
                 "username": { $first: "$member.userdoc.username"},
                 "uuid": { $first: "$member.userdoc.uuid"},
+                "projectCreatedAt": { $first: "$createdAt"},
+                "projectUpdatedAt": { $first: "$updatedAt"},
             }},
             {$group: {
                 "_id": "$projectid",
                 "uuid": {$first: "$projectuuid"},
                 "name": {$first: "$projectname"},
                 "description": {$first: "$projectdescription"},
+                "createdAt": {$first: "$projectCreatedAt"},
+                "updatedAt": {$first: "$projectUpdatedAt"},
                 "members": {
                     $push: {
                         "username": "$username",
                         "uuid": "$uuid",
                         "projectroles": "$projectroles"
                     }
-                }
+                },
             }},
             {$project: {
                 "_id": 0
@@ -124,6 +130,8 @@ const getAllProjects = async () => {
                 "uuid": { "$first": "$uuid" },
                 "name": { "$first": "$name" },
                 "description": { "$first": "$description" },
+                "createdAt": { "$first": "$createdAt" },
+                "updatedAt": { "$first": "$updatedAt" },
                 "members": {
                     "$push": {
                         "uuid": "$members.user.uuid",
@@ -160,6 +168,8 @@ const getAllProjectsWithUser = async (userId) => {
                 "uuid": { "$first": "$uuid" },
                 "name": { "$first": "$name" },
                 "description": { "$first": "$description" },
+                "createdAt": { "$first": "$createdAt" },
+                "updatedAt": { "$first": "$updatedAt" },
                 "members": {
                     "$push": {
                         "uuid": "$members.user.uuid",
