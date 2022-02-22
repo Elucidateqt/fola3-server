@@ -135,7 +135,6 @@ const getAllProjects = async () => {
                 "members": {
                     "$push": {
                         "uuid": "$members.user.uuid",
-                        "email": "$members.user.email",
                         "username": "$members.user.username",
                         "role": "$members.role"
                     }
@@ -151,7 +150,7 @@ const getAllProjects = async () => {
     }
 }
 
-const getAllProjectsWithUser = async (userId) => {
+const getAllProjectsWithUser = async (userId, limit, offset) => {
     try{
         const projectList = Project.aggregate([
             {$match: {"members": { "$elemMatch": {user: userId}}} },
@@ -173,12 +172,13 @@ const getAllProjectsWithUser = async (userId) => {
                 "members": {
                     "$push": {
                         "uuid": "$members.user.uuid",
-                        "email": "$members.user.email",
                         "username": "$members.user.username",
                         "role": "$members.role"
                     }
                 }
             }},
+            {$skip: offset},
+            {$limit: limit},
             {$project: {
                 "_id": 0
             }}

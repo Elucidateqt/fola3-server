@@ -4,11 +4,14 @@ const middleware = require('../middleware')
 const authMiddleware = middleware.auth
 const projectMiddleware = middleware.project
 const controller = require('../controllers/projects')
-const { body, param } = require('express-validator')
+const { body, param, query } = require('express-validator')
 
 router.get('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission('PROJECTS:VIEW'), controller.getAllProjects)
 
-router.get('/my', authMiddleware.authenticateToken, controller.getProjectsWithUser)
+router.get('/my', authMiddleware.authenticateToken,
+query('limit').optional().isNumeric(),
+query('offset').optional().isNumeric(),
+controller.getProjectsWithUser)
 
 router.get('/:projectId', authMiddleware.authenticateToken, param('projectId').trim().isUUID().withMessage('must be valid UUID'), projectMiddleware.loadProject, projectMiddleware.canViewProject, controller.returnProject)
 

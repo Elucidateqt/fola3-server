@@ -70,7 +70,10 @@ exports.getAllProjects = async (req, res, next) => {
 
 exports.getProjectsWithUser = async (req, res, next) => {
     try{
-        const projectList = await Project.getAllProjectsWithUser(req.locals.user._id)
+        //return all projects if no offset or limit specified
+        const offset = req.query.offset || 0
+        const limit = req.query.limit || Number.MAX_SAFE_INTEGER
+        const projectList = await Project.getAllProjectsWithUser(req.locals.user._id, parseInt(limit), parseInt(offset))
         logger.log('info', `Loaded projects with User ${req.locals.user.uuid} from DB.`)
         res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
     }catch(err){
