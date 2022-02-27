@@ -30,6 +30,7 @@ exports.authenticateToken = (req, res, next) => {
           return res.sendStatus(403)
         }
         req.locals.user = user
+        req.locals.ua = req.get('user-agent')
         next()
       }
       catch (err) {

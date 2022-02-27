@@ -12,7 +12,7 @@ const createBugreport = async (req, res, next) => {
       return next()
     }
     try{
-        const bugreport = await Report.createBugreport(uuidv4(), req.locals.user._id, req.body.location, req.body.summary, req.body.description)
+        const bugreport = await Report.createBugreport(uuidv4(), req.locals.user._id, req.locals.ua, req.body.route, req.body.summary, req.body.description)
         res.sendStatus(204)
         logger.log("info", `Bugreport created by user ${req.locals.user.uuid}`)
         next()

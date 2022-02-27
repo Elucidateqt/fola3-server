@@ -13,7 +13,7 @@ const Bugreport = new mongoose.model(
             type: String,
             default: "none"
         },
-        "location": {
+        "route": {
             type: String,
             required: true,
         },
@@ -21,6 +21,10 @@ const Bugreport = new mongoose.model(
         "author": {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
+            required: true
+        },
+        "user_agent": {
+            type: String,
             required: true
         },
         "summary": {
@@ -35,12 +39,13 @@ const Bugreport = new mongoose.model(
     { timestamps: true })
 )
 
-const createBugreport = async (uuid, userId, location, summary, description) => {
+const createBugreport = async (uuid, userId, userAgent, route, summary, description) => {
     try{
         const report = await new Bugreport({
             "uuid": uuid,
             "author": userId,
-            "location": location,
+            "user_agent": userAgent,
+            "route": route,
             "summary": summary,
             "description": description
         }).save();
@@ -48,7 +53,8 @@ const createBugreport = async (uuid, userId, location, summary, description) => 
             "_id" : report._id,
             "uuid" : report.uuid,
             "author" : report.author,
-            "location": report.location,
+            "user_agent": report.user_agent,
+            "route": report.route,
             "summary": report.summary,
             "description": report.description
         }
