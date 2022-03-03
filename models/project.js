@@ -194,6 +194,7 @@ const getAllProjectsWithUser = async (userId, limit, offset) => {
                     }
                 }
             }},
+            {$sort: {updatedAt: -1}},
             {$skip: offset},
             {$limit: limit},
             {$project: {
