@@ -7,8 +7,8 @@ const { body, param } = require('express-validator');
 
 router.post('/', authWare.authenticateToken, authWare.authenticatePermission('BUGREPORT:CREATE'),
 body('route').exists().isString().trim().escape(),
-body('summary').exists().isString().trim().isLength({min: 10, max: 128}).escape(),
-body('description').exists().isString().trim().isLength({min: 10, max: 512}).escape(),
+body('summary').exists().isString().trim().isLength({min: 10, max: 128}).isAlpha('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
+body('description').exists().isString().trim().isLength({min: 10, max: 512}).isAlpha('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
 controller.createBugreport)
 
 router.get('/', authWare.authenticateToken, authWare.authenticatePermission('BUGREPORTS:READ'), controller.getAllBugreports)

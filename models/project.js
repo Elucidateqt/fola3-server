@@ -1,4 +1,13 @@
 const mongoose = require('mongoose');
+const Crypto = require('crypto')
+
+function createRandomString(bytes = 8) {  
+  return Crypto
+    .randomBytes(bytes)
+    .toString('base64')
+    .replace('/', '')
+    .slice(0, bytes)
+}
 
 const Project = new mongoose.model(
     "Project",
@@ -12,6 +21,10 @@ const Project = new mongoose.model(
             required: true
         },
         description: String,
+        inviteCode: {
+            type: String,
+            default: createRandomString(8)
+        },
         members: [
             {
                 user: {
@@ -36,11 +49,11 @@ const createProject = async (uuid, name, description, creatorId, creatorRoleIds)
             "description": description,
             "members": [{user: creatorId, roles: creatorRoleIds }]
         }).save();
-        //TODO: emit event
         return {
             "_id" : project._id,
             "uuid" : project.uuid,
             "name" : project.name,
+            "inviteCode": project.inviteCode,
             "description" : project.description,
             "members": [{"uuid": creatorId, "roles": creatorRoleIds }],
             "createdAt": project.createdAt,
@@ -78,6 +91,7 @@ const getProjectByUuid = async (uuid) => {
                 "projectid": { $first: "$_id" },
                 "projectuuid": {$first: "$uuid"},
                 "projectname": { $first: "$name" },
+                "projectInviteCode": { $first: "$inviteCode"},
                 "projectdescription": { $first: "$description" },
                 "projectroles": {$push: "$member.roledoc.name"},
                 "username": { $first: "$member.userdoc.username"},
@@ -90,6 +104,7 @@ const getProjectByUuid = async (uuid) => {
                 "uuid": {$first: "$projectuuid"},
                 "name": {$first: "$projectname"},
                 "description": {$first: "$projectdescription"},
+                "inviteCode": { $first: "$projectInviteCode"},
                 "createdAt": {$first: "$projectCreatedAt"},
                 "updatedAt": {$first: "$projectUpdatedAt"},
                 "members": {
@@ -130,6 +145,7 @@ const getAllProjects = async () => {
                 "uuid": { "$first": "$uuid" },
                 "name": { "$first": "$name" },
                 "description": { "$first": "$description" },
+                "inviteCode": { "$first": "$inviteCode" },
                 "createdAt": { "$first": "$createdAt" },
                 "updatedAt": { "$first": "$updatedAt" },
                 "members": {
@@ -167,6 +183,7 @@ const getAllProjectsWithUser = async (userId, limit, offset) => {
                 "uuid": { "$first": "$uuid" },
                 "name": { "$first": "$name" },
                 "description": { "$first": "$description" },
+                "inviteCode": { "$first": "$inviteCode" },
                 "createdAt": { "$first": "$createdAt" },
                 "updatedAt": { "$first": "$updatedAt" },
                 "members": {
@@ -217,6 +234,21 @@ const updateProjectName = async (uuid, name) => {
         return result[0]
     }catch(err){
         throw new Error(`Error updating name for project with UUID ${uuid}: \n ${err}`)
+    }
+}
+
+const createNewInviteCode = async (uuid) => {
+    try{
+        const result = await Project.findOneAndUpdate({
+            "uuid": uuid
+        },
+        [
+            {$set: {"inviteCode": createRandomString(8)}}
+        ],
+        {upsert: false})
+        return result
+    }catch(err){
+        throw new Error(`Error creating new invite code for project with UUID ${uuid}: \n ${err}`)
     }
 }
 
@@ -359,4 +391,4 @@ const isUserInProject = async (userUuid, projectUuid) => {
     }
 }
 
-module.exports = { createProject, getProjectByUuid, getAllProjects, getAllProjectsWithUser, updateProjectDescription, updateProjectName, deleteProject, getUsersInProject, getUserRolesInProject, hasUserRoleInProject, addMembersToProject, removeMembersFromProject, isUserInProject }
+module.exports = { createProject, getProjectByUuid, getAllProjects, getAllProjectsWithUser, updateProjectDescription, updateProjectName, createNewInviteCode, deleteProject, getUsersInProject, getUserRolesInProject, hasUserRoleInProject, addMembersToProject, removeMembersFromProject, isUserInProject }

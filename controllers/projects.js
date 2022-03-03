@@ -128,6 +128,48 @@ exports.setProjectName = async (req, res, next) => {
     }
 }
 
+exports.createNewInviteCode = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return 
+    }
+    try {
+        const project = await Project.createNewInviteCode(req.params.projectId)
+        res.json({ inviteCode: project.inviteCode})
+    } catch (err) {
+        logger.log('error', err)
+        res.sendStatus(500)
+    }
+}
+
+exports.joinWithCode = async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return 
+    }
+    const isBearerInProject = req.locals.project.members.some(member => {
+        return member.uuid === req.locals.user.uuid
+    })
+    if(isBearerInProject){
+        res.status(400).send({ error: 'already_member'})
+        return
+    }
+    if(req.query.inv !== req.locals.project.inviteCode){
+        res.status(403).json({ error: 'invite.invalid'})
+        return
+    }
+    try{
+        const roles = await Role.getProjectRolesByNameList(['projectMember'])
+        await Project.addMembersToProject(req.params.projectId, [{user: req.locals.user._id, roles: [roles[0]._id]}])
+        res.sendStatus(204)
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
+    }
+}
+
 exports.addMembers = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
