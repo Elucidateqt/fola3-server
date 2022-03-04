@@ -9,8 +9,8 @@ function createRandomString(bytes = 8) {
     .slice(0, bytes)
 }
 
-const Project = new mongoose.model(
-    "Project",
+const Board = new mongoose.model(
+    "Board",
     new mongoose.Schema({
         uuid: {
             type: String,
@@ -41,34 +41,34 @@ const Project = new mongoose.model(
     { timestamps: true })
 )
 
-const createProject = async (uuid, name, description, creatorId, creatorRoleIds) => {
+const createBoard = async (uuid, name, description, creatorId, creatorRoleIds) => {
     try{
-        const project = await new Project({
+        const board = await new Board({
             "uuid": uuid,
             "name": name,
             "description": description,
             "members": [{user: creatorId, roles: creatorRoleIds }]
         }).save();
         return {
-            "_id" : project._id,
-            "uuid" : project.uuid,
-            "name" : project.name,
-            "inviteCode": project.inviteCode,
-            "description" : project.description,
+            "_id" : board._id,
+            "uuid" : board.uuid,
+            "name" : board.name,
+            "inviteCode": board.inviteCode,
+            "description" : board.description,
             "members": [{"uuid": creatorId, "roles": creatorRoleIds }],
-            "createdAt": project.createdAt,
-            "updatedAt": project.updatedAt
+            "createdAt": board.createdAt,
+            "updatedAt": board.updatedAt
         }
     }catch(err){
-        throw new Error(`Error creating project in DB: ${err}`)
+        throw new Error(`Error creating board in DB: ${err}`)
     }
 
 }
 
 
-const getProjectByUuid = async (uuid) => {
+const getBoardByUuid = async (uuid) => {
     try{
-        const result  = await Project.aggregate([
+        const result  = await Board.aggregate([
             {$match: {"uuid": uuid} },
             {$unwind: '$members'},
             {$lookup: {
@@ -88,30 +88,30 @@ const getProjectByUuid = async (uuid) => {
             {$unwind: '$member.roledoc'},
             {$group: {
                 "_id": "$member.userdoc._id",
-                "projectid": { $first: "$_id" },
-                "projectuuid": {$first: "$uuid"},
-                "projectname": { $first: "$name" },
-                "projectInviteCode": { $first: "$inviteCode"},
-                "projectdescription": { $first: "$description" },
-                "projectroles": {$push: "$member.roledoc.name"},
+                "boardid": { $first: "$_id" },
+                "boarduuid": {$first: "$uuid"},
+                "boardname": { $first: "$name" },
+                "boardInviteCode": { $first: "$inviteCode"},
+                "boarddescription": { $first: "$description" },
+                "boardroles": {$push: "$member.roledoc.name"},
                 "username": { $first: "$member.userdoc.username"},
                 "uuid": { $first: "$member.userdoc.uuid"},
-                "projectCreatedAt": { $first: "$createdAt"},
-                "projectUpdatedAt": { $first: "$updatedAt"},
+                "boardCreatedAt": { $first: "$createdAt"},
+                "boardUpdatedAt": { $first: "$updatedAt"},
             }},
             {$group: {
-                "_id": "$projectid",
-                "uuid": {$first: "$projectuuid"},
-                "name": {$first: "$projectname"},
-                "description": {$first: "$projectdescription"},
-                "inviteCode": { $first: "$projectInviteCode"},
-                "createdAt": {$first: "$projectCreatedAt"},
-                "updatedAt": {$first: "$projectUpdatedAt"},
+                "_id": "$boardid",
+                "uuid": {$first: "$boarduuid"},
+                "name": {$first: "$boardname"},
+                "description": {$first: "$boarddescription"},
+                "inviteCode": { $first: "$boardInviteCode"},
+                "createdAt": {$first: "$boardCreatedAt"},
+                "updatedAt": {$first: "$boardUpdatedAt"},
                 "members": {
                     $push: {
                         "username": "$username",
                         "uuid": "$uuid",
-                        "projectroles": "$projectroles"
+                        "boardroles": "$boardroles"
                     }
                 },
             }},
@@ -124,13 +124,13 @@ const getProjectByUuid = async (uuid) => {
         }
         return result[0]
     }catch(err){
-        throw new Error(`Error loading Project with UUID ${uuid} from DB: \n ${err}`)
+        throw new Error(`Error loading Board with UUID ${uuid} from DB: \n ${err}`)
     }
 }
 
-const getAllProjects = async () => {
+const getAllBoards = async () => {
     try{
-        const projects  = await Project.aggregate([
+        const boards  = await Board.aggregate([
             {$match: {} },
             {$unwind: '$members'},
             {$lookup: {
@@ -160,15 +160,15 @@ const getAllProjects = async () => {
                 "_id": 0
             }}
         ]).exec()
-        return projects
+        return boards
     }catch(err){
-        throw new Error(`Error loading all projects from DB: \n ${err}`)
+        throw new Error(`Error loading all boards from DB: \n ${err}`)
     }
 }
 
-const getAllProjectsWithUser = async (userId, limit, offset) => {
+const getAllBoardsWithUser = async (userId, limit, offset) => {
     try{
-        const projectList = Project.aggregate([
+        const boardList = Board.aggregate([
             {$match: {"members": { "$elemMatch": {user: userId}}} },
             {$unwind: '$members'},
             {$lookup: {
@@ -201,16 +201,16 @@ const getAllProjectsWithUser = async (userId, limit, offset) => {
                 "_id": 0
             }}
         ]).exec()
-        return projectList
+        return boardList
 
     }catch(err){
-        throw new Error(`Error loading all Projects for User ${userId} from DB: \n ${err}`)
+        throw new Error(`Error loading all Boards for User ${userId} from DB: \n ${err}`)
     }
 }
 
-const updateProjectDescription  = async (uuid, description) => {
+const updateBoardDescription  = async (uuid, description) => {
     try{
-        const results = await Project.updateOne({
+        const results = await Board.updateOne({
             "uuid": uuid
         },
         [
@@ -219,13 +219,13 @@ const updateProjectDescription  = async (uuid, description) => {
         {upsert: false})
         return results[0]
     }catch(err){
-        throw new Error(`Error updating description for project with UUID ${uuid}: \n ${err}`)
+        throw new Error(`Error updating description for board with UUID ${uuid}: \n ${err}`)
     }
 }
 
-const updateProjectName = async (uuid, name) => {
+const updateBoardName = async (uuid, name) => {
     try{
-        const result = await Project.updateOne({
+        const result = await Board.updateOne({
             "uuid": uuid
         },
         [
@@ -234,13 +234,13 @@ const updateProjectName = async (uuid, name) => {
         {upsert: false})
         return result[0]
     }catch(err){
-        throw new Error(`Error updating name for project with UUID ${uuid}: \n ${err}`)
+        throw new Error(`Error updating name for board with UUID ${uuid}: \n ${err}`)
     }
 }
 
 const createNewInviteCode = async (uuid) => {
     try{
-        const result = await Project.findOneAndUpdate({
+        const result = await Board.findOneAndUpdate({
             "uuid": uuid
         },
         [
@@ -249,12 +249,12 @@ const createNewInviteCode = async (uuid) => {
         {upsert: false})
         return result
     }catch(err){
-        throw new Error(`Error creating new invite code for project with UUID ${uuid}: \n ${err}`)
+        throw new Error(`Error creating new invite code for board with UUID ${uuid}: \n ${err}`)
     }
 }
 
-const deleteProject = async (uuid) => {
-    await Project.deleteOne({ "uuid": uuid }).exec()
+const deleteBoard = async (uuid) => {
+    await Board.deleteOne({ "uuid": uuid }).exec()
 }
 
 
@@ -262,32 +262,32 @@ const deleteProject = async (uuid) => {
 UTILITY FUNCTIONS
 */
 
-const addMembersToProject = async(projectUuid, members) => {
+const addMembersToBoard = async(boardUuid, members) => {
     try{
-        await Project.updateOne({uuid: projectUuid},
+        await Board.updateOne({uuid: boardUuid},
             {$push: {"members": {$each: members}}}
         ).exec()
     }catch(err){
-        throw new Error(`Error adding members to project: ${err}`)
+        throw new Error(`Error adding members to board: ${err}`)
     }
 }
 
-const removeMembersFromProject = async (projectUuid, memberIds) => {
+const removeMembersFromBoard = async (boardUuid, memberIds) => {
     try{
-        await Project.updateOne({
-            uuid: projectUuid
+        await Board.updateOne({
+            uuid: boardUuid
         },
         {$pull: {"members": {"user": {$in: memberIds}}}})
         .exec()
     }catch(err){
-        throw new Error(`Error removing members from project: ${err}`)
+        throw new Error(`Error removing members from board: ${err}`)
     }
 }
 
-const getUserRolesInProject = async (userUuid, projectUuid) => {
+const getUserRolesInBoard = async (userUuid, boardUuid) => {
     try{
-        const results = await Project.aggregate([
-            { $match: { "uuid": projectUuid } },
+        const results = await Board.aggregate([
+            { $match: { "uuid": boardUuid } },
             { $unwind: '$members'},
             {$lookup: {
                 from: 'users',
@@ -310,14 +310,14 @@ const getUserRolesInProject = async (userUuid, projectUuid) => {
         ]).exec()   
         return results
     }catch(err){
-        throw new Error(`Error in models.project.getUserRolesInProject: \n ${err}`)
+        throw new Error(`Error in models.board.getUserRolesInBoard: \n ${err}`)
     }
 }
 
-const hasUserRoleInProject = async (userUuid, projectUuid) => {
+const hasUserRoleInBoard = async (userUuid, boardUuid) => {
     try{
-        const results = await Project.aggregate([
-            { $match: { "uuid": projectUuid } },
+        const results = await Board.aggregate([
+            { $match: { "uuid": boardUuid } },
             { $unwind: '$members'},
             {$lookup: {
                 from: 'users',
@@ -340,13 +340,13 @@ const hasUserRoleInProject = async (userUuid, projectUuid) => {
         ]).exec()   
         return results.length > 0
     }catch(err){
-        throw new Error(`Error checking ProjectRole for user-id ${uuid} in Project ${projectUuid}`)
+        throw new Error(`Error checking BoardRole for user-id ${uuid} in Board ${boardUuid}`)
     }
 }
 
-const getUsersInProject = async (uuid)  => {
+const getUsersInBoard = async (uuid)  => {
     try{
-        const results = await Project.aggregate([
+        const results = await Board.aggregate([
             {$match: {"uuid": uuid}},
             {$unwind: '$members'},
             {$lookup: {
@@ -376,20 +376,20 @@ const getUsersInProject = async (uuid)  => {
         }
         return results[0].members
     }catch(err){
-        throw new Error(`Error loading users for project with uuid ${uuid}: \n ${err}`)
+        throw new Error(`Error loading users for board with uuid ${uuid}: \n ${err}`)
     }
 }
 
-const isUserInProject = async (userUuid, projectUuid) => {
+const isUserBoardMember = async (userUuid, boardUuid) => {
     try{
-        const users = await getUsersInProject(projectUuid)
+        const users = await getUsersInBoard(boardUuid)
         if(!users){
             return false
         }
         return users.some(user => user.uuid === userUuid)
     }catch(err){
-        throw new Error(`Error checking if user ${uuid} is in project ${projectUuid}: \n ${err}`)
+        throw new Error(`Error checking if user ${uuid} is in board ${boardUuid}: \n ${err}`)
     }
 }
 
-module.exports = { createProject, getProjectByUuid, getAllProjects, getAllProjectsWithUser, updateProjectDescription, updateProjectName, createNewInviteCode, deleteProject, getUsersInProject, getUserRolesInProject, hasUserRoleInProject, addMembersToProject, removeMembersFromProject, isUserInProject }
+module.exports = { createBoard, getBoardByUuid, getAllBoards, getAllBoardsWithUser, updateBoardDescription, updateBoardName, createNewInviteCode, deleteBoard, getUsersInBoard, getUserRolesInBoard, hasUserRoleInBoard, addMembersToBoard, removeMembersFromBoard, isUserBoardMember }

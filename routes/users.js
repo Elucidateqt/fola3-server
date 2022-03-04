@@ -63,7 +63,7 @@ controller.getUser)
 
 router.delete('/me', authWare.authenticateToken, controller.deleteTokenBearer)
 
-//TODO: add cascading delete for projects
+//TODO: add cascading delete for boards
 router.delete('/:userId', authWare.authenticateToken, authWare.authenticatePermission("USERS:DELETE"),
 param('userId').trim().isUUID().withMessage('must be valid UUID'),
 controller.deleteUser)

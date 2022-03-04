@@ -1,55 +1,55 @@
 db = require('../models')
 const { v4: uuidv4 } = require('uuid')
 const User = db.user
-const Project = db.project
+const Board = db.board
 const Role = db.role
 const registry = require('../lib/registry')
-const logger = registry.getService('logger').child({ component: 'projectController' })
+const logger = registry.getService('logger').child({ component: 'boardController' })
 const { validationResult } = require('express-validator')
 
-exports.createProject = async (req, res, next) => {
+exports.createBoard = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return
     }
-    let projectName = req.body.name || 'New Project',
-        projectDescription = req.body.description || 'Description missing'
+    let boardName = req.body.name || 'New Board',
+        boardDescription = req.body.description || 'Description missing'
     try{
         const user = await User.getUserByUuid(req.locals.user.uuid)
         if(!user){
             res.status(500).send({ "message": "UserNotFound" })
             return
         }
-        const roles = await Role.getProjectRoles()
+        const roles = await Role.getBoardRoles()
         const roleNames = []
         const roleIds = []
         roles.forEach((role) => {
             roleIds.push(role._id)
             roleNames.push(role.name)
         })
-        const project = await Project.createProject(uuidv4(), projectName, projectDescription, user._id, roleIds)
-        delete project._id
-        project.members[0].uuid = req.locals.user.uuid
-        project.members[0].username = req.locals.user.username
-        project.members[0].roles = roleNames
-        logger.log('info', `Project with uuid ${project.uuid} created by user ${req.locals.user.uuid}`)
-        res.status(200).send({ "message": "projectCreated", "project": project})
+        const board = await Board.createBoard(uuidv4(), boardName, boardDescription, user._id, roleIds)
+        delete board._id
+        board.members[0].uuid = req.locals.user.uuid
+        board.members[0].username = req.locals.user.username
+        board.members[0].roles = roleNames
+        logger.log('info', `Board with uuid ${board.uuid} created by user ${req.locals.user.uuid}`)
+        res.status(200).send({ "message": "boardCreated", "board": board})
     }catch(err){
         logger.log('error', err)
         res.status(500).send({ "message": err })
     }
 }
 
-exports.deleteProject = async (req, res, next) => {
+exports.deleteBoard = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return
     }
     try{
-        await Project.deleteProject(req.params.projectId)
-        logger.log('error', `Deleted project ${req.params.projectId} from DB`)
+        await Board.deleteBoard(req.params.boardId)
+        logger.log('error', `Deleted board ${req.params.boardId} from DB`)
         res.sendStatus(200)
     }catch(err){
         logger.log('error', err)
@@ -57,50 +57,56 @@ exports.deleteProject = async (req, res, next) => {
     }
 }
 
-exports.getAllProjects = async (req, res, next) => {
+exports.getAllBoards = async (req, res, next) => {
     try{
-        const projectList = await Project.getAllProjects()
-        logger.log('info', `Loaded all projects from DB`)
-        res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
+        const boardList = await Board.getAllBoards()
+        logger.log('info', `Loaded all boards from DB`)
+        res.status(200).send({ "message": "boardsLoaded", "boardList": boardList })
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
     }
 }
 
-exports.getProjectsWithUser = async (req, res, next) => {
+exports.getBoardsWithUser = async (req, res, next) => {
     try{
-        //return all projects if no offset or limit specified
+        //return all boards if no offset or limit specified
         const offset = req.query.offset || 0
-        const limit = req.query.limit || Number.MAX_SAFE_INTEGER
-        const projectList = await Project.getAllProjectsWithUser(req.locals.user._id, parseInt(limit), parseInt(offset))
-        logger.log('info', `Loaded projects with User ${req.locals.user.uuid} from DB.`)
-        res.status(200).send({ "message": "projectsLoaded", "projectList": projectList })
+        const limit = req.query.limit || 20
+        console.log("getting user boards with params", offset, limit)
+        const boardList = await Board.getAllBoardsWithUser(req.locals.user._id, parseInt(limit), parseInt(offset))
+        logger.log('info', `Loaded boards with User ${req.locals.user.uuid} from DB.`)
+        res.status(200).send({ "message": "boardsLoaded", "boardList": boardList })
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
     }
 }
 
-exports.returnProject = async (req, res, next) => {
-    try{
-        logger.log('info', `lodaded Project ${req.locals.project.uuid} from DB`)
-        res.status(200).send({ "message": "projectLoaded", "project": req.locals.project})   
-    }catch(err){
-        logger.log('error', err)
-        res.sendStatus(500)
-    }
-}
-
-exports.setProjectDescription = async (req, res, next) => {
+exports.returnBoard = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return
     }
     try{
-        await Project.updateProjectDescription(req.params.projectId, req.body.description)
-        logger.log('info', `updated description of project ${req.params.projectId}`)
+        logger.log('info', `lodaded Board ${req.locals.board.uuid} from DB`)
+        res.status(200).send({ "message": "boardLoaded", "board": req.locals.board})   
+    }catch(err){
+        logger.log('error', err)
+        res.sendStatus(500)
+    }
+}
+
+exports.setBoardDescription = async (req, res, next) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return
+    }
+    try{
+        await Board.updateBoardDescription(req.params.boardId, req.body.description)
+        logger.log('info', `updated description of board ${req.params.boardId}`)
         res.sendStatus(200)
         
     }catch(err){
@@ -110,15 +116,15 @@ exports.setProjectDescription = async (req, res, next) => {
     }
 }
 
-exports.setProjectName = async (req, res, next) => {
+exports.setBoardName = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return 
     }
     try{
-        await Project.updateProjectName(req.params.projectId, req.body.name)
-        logger.log('info', `Updated description of project ${req.params.projectId}`)
+        await Board.updateBoardName(req.params.boardId, req.body.name)
+        logger.log('info', `Updated description of board ${req.params.boardId}`)
         res.sendStatus(200)
         
     }catch(err){
@@ -135,8 +141,8 @@ exports.createNewInviteCode = async (req, res) => {
       return 
     }
     try {
-        const project = await Project.createNewInviteCode(req.params.projectId)
-        res.json({ inviteCode: project.inviteCode})
+        const board = await Board.createNewInviteCode(req.params.boardId)
+        res.json({ inviteCode: board.inviteCode})
     } catch (err) {
         logger.log('error', err)
         res.sendStatus(500)
@@ -144,25 +150,29 @@ exports.createNewInviteCode = async (req, res) => {
 }
 
 exports.joinWithCode = async (req, res) => {
+    console.log("ARRIVED 1")
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return 
     }
-    const isBearerInProject = req.locals.project.members.some(member => {
+    const isBearerInBoard = req.locals.board.members.some(member => {
         return member.uuid === req.locals.user.uuid
     })
-    if(isBearerInProject){
+    console.log("ARRIVED")
+    if(isBearerInBoard){
         res.status(400).send({ error: 'already_member'})
         return
     }
-    if(req.query.inv !== req.locals.project.inviteCode){
+    console.log("checking")
+    if(req.query.inv !== req.locals.board.inviteCode){
+        console.log("invalid code")
         res.status(403).json({ error: 'invite.invalid'})
         return
     }
     try{
-        const roles = await Role.getProjectRolesByNameList(['projectMember'])
-        await Project.addMembersToProject(req.params.projectId, [{user: req.locals.user._id, roles: [roles[0]._id]}])
+        const roles = await Role.getBoardRolesByNameList(['boardMember'])
+        await Board.addMembersToBoard(req.params.boardId, [{user: req.locals.user._id, roles: [roles[0]._id]}])
         res.sendStatus(204)
     }catch(err){
         logger.log('error', err)
@@ -183,13 +193,13 @@ exports.addMembers = async (req, res, next) => {
     await Promise.all(req.body.users.map(async (user) => {
         if(!uniqueMembers.hasOwnProperty(user.uuid)){
             uniqueMembers[user.uuid] = {}
-            const roles = await Role.getProjectRolesByNameList(user.roles)
+            const roles = await Role.getBoardRolesByNameList(user.roles)
             uniqueMembers[user.uuid].roleIds = roles.map(role => {return role._id})
             userUuids.push(user.uuid)
         }
     }))
     try{
-        const currMembers = await Project.getUsersInProject(req.params.projectId)
+        const currMembers = await Board.getUsersInBoard(req.params.boardId)
         //filter all users out that already are members
         userUuids = userUuids.filter(uuid => !currMembers.some(member => member.uuid === uuid))
         const newMembers = await User.getUsersByUuids(userUuids)
@@ -197,8 +207,8 @@ exports.addMembers = async (req, res, next) => {
             //maybe some special response in the future if no new members remain?
         }
         newMembers.forEach(user => insertSet.push({user: user._id, roles: uniqueMembers[user.uuid].roleIds}))
-        await Project.addMembersToProject(req.params.projectId, insertSet)
-        logger.log('info', `Added ${newMembers.length} users to project ${req.params.projectId}`)
+        await Board.addMembersToBoard(req.params.boardId, insertSet)
+        logger.log('info', `Added ${newMembers.length} users to board ${req.params.boardId}`)
         res.sendStatus(204)
         
     }catch(err){
@@ -215,17 +225,17 @@ exports.removeMemembers = async (req, res, next) => {
       return 
     }
     try {
-        //admin can't delete themselves to guarantee atleast 1 admin per project
+        //admin can't delete themselves to guarantee atleast 1 admin per board
         if(req.body.users.some(uuid => uuid === req.locals.user.uuid)){
-            logger.log('warn', `User ${req.locals.user.uuid} tried to remove himself from project ${req.params.projectId}`)
+            logger.log('warn', `User ${req.locals.user.uuid} tried to remove himself from board ${req.params.boardId}`)
             res.status(400).send({ "message": "cantDeleteSelf" })
             return 
         }
         let userIds = []
         const users = await User.getUsersByUuids(req.body.users)
         users.forEach(user => userIds.push(user._id))
-        await Project.removeMembersFromProject(req.params.projectId, userIds)
-        logger.log('info', `removed ${userIds.length} members from project ${req.params.projectId}`)
+        await Board.removeMembersFromBoard(req.params.boardId, userIds)
+        logger.log('info', `removed ${userIds.length} members from board ${req.params.boardId}`)
         res.sendStatus(204)
         
     } catch (err) {
@@ -235,26 +245,26 @@ exports.removeMemembers = async (req, res, next) => {
     }
 }
 
-exports.leaveProject = async (req, res, next) => {
+exports.leaveBoard = async (req, res, next) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
       return 
     }
     try{
-        const project = await Project.getProjectByUuid(req.params.projectId)
-        if(!project){
-            res.status(404).send({ "message": "projectNotFound" })
+        const board = await Board.getBoardByUuid(req.params.boardId)
+        if(!board){
+            res.status(404).send({ "message": "boardNotFound" })
             return 
         }
-        //reject if the project would be left without any admins
-        if(project.members.filter(user => user.projectroles.includes('projectAdmin') && user.uuid != req.locals.user.uuid).length === 0){
+        //reject if the board would be left without any admins
+        if(board.members.filter(user => user.boardroles.includes('boardAdmin') && user.uuid != req.locals.user.uuid).length === 0){
             logger.log('warn', `User ${req.locals.user.uuid} not permitted to leave. Last admin left`)
             return res.status(405).send({ "message": "lastAdminLeft" })
         }
         const user = await User.getUserByUuid(req.locals.user.uuid)
-        await Project.removeMembersFromProject(req.params.projectId, [ user._id ])
-        logger.log('info', `User ${req.locals.user.uuid} left project ${req.params.projectId}`)
+        await Board.removeMembersFromBoard(req.params.boardId, [ user._id ])
+        logger.log('info', `User ${req.locals.user.uuid} left board ${req.params.boardId}`)
         res.sendStatus(200)
         
     }catch(err){

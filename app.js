@@ -125,7 +125,7 @@ const connectMongoDB = async () => {
         //routes and db after logger-creation, so they can load it
         const authRoute = require("./routes/auth")
         const userRoute = require('./routes/users')
-        const projectRoute = require('./routes/projects')
+        const boardRoute = require('./routes/boards')
         const roleRoute = require('./routes/roles')
         const permissionRoute = require('./routes/permissions')
         const bugreportRoute = require('./routes/bugreports')
@@ -160,7 +160,7 @@ const connectMongoDB = async () => {
         app.use("/roles", roleRoute)
         app.use("/permissions", permissionRoute)
         app.use("/users", userRoute)
-        app.use("/projects", projectRoute)
+        app.use("/boards", boardRoute)
         app.use("/bugreports", bugreportRoute)
 
         server = http.createServer(app)

@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid')
 const Report = db.bugreport
 const { validationResult } = require('express-validator')
 const registry = require('../lib/registry')
-const logger = registry.getService('logger').child({ component: 'projectController' })
+const logger = registry.getService('logger').child({ component: 'BugReportController' })
 
 const createBugreport = async (req, res, next) => {
     const errors = validationResult(req)

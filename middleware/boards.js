@@ -1,21 +1,23 @@
 const db = require('../models')
-const Project = db.project
+const Board = db.board
 const registry = require('../lib/registry')
-const logger = registry.getService('logger').child({ component: 'Project Middleware'})
+const logger = registry.getService('logger').child({ component: 'Board Middleware'})
 const { validationResult } = require('express-validator')
 
 
-exports.loadProject = async (req, res, next) => {
+exports.loadBoard = async (req, res, next) => {
+    console.log("loading board")
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
     try{
-        const project = await Project.getProjectByUuid(req.params.projectId)
-        if(!project){
+        const board = await Board.getBoardByUuid(req.params.boardId)
+        if(!board){
             return res.sendStatus(404)
         }
-        req.locals.project = project
+        req.locals.board = board
+        console.log("board loaded")
         next()
     }catch(err){
         logger.log('error', err)
@@ -23,9 +25,9 @@ exports.loadProject = async (req, res, next) => {
     }
 }
 
-exports.isUserInProject = async (req, res, next) => {
+exports.isUserBoardMember = async (req, res, next) => {
     try{
-        if(await Project.isUserInProject(req.locals.user.uuid, req.params.projectId)){
+        if(await Board.isUserBoardMember(req.locals.user.uuid, req.params.boardId)){
             return next()
         }
         return res.status(403)
@@ -35,9 +37,9 @@ exports.isUserInProject = async (req, res, next) => {
     }
 }
 
-exports.canViewProject = async (req, res, next) => {
+exports.canViewBoard = async (req, res, next) => {
     try{
-        if(req.locals.project.members.some(member => member.uuid === req.locals.user.uuid) || req.locals.user.permissions.includes('PROJECTS:VIEW')){
+        if(req.locals.board.members.some(member => member.uuid === req.locals.user.uuid) || req.locals.user.permissions.includes('BOARDS:VIEW')){
             return next()
         }
         return res.sendStatus(403)

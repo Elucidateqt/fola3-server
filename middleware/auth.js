@@ -1,7 +1,7 @@
 const express = require('express')
 const jwt = require('jsonwebtoken')
 const db = require('../models')
-const Project = db.project
+const Board = db.board
 const Role = db.role
 const User = db.user
 const Permission = db.permission
@@ -57,15 +57,15 @@ exports.authenticatePermission = (permission) => {
   }
 }
 
-exports.authenticateProjectPermission = (permission) => {
+exports.authenticateBoardPermission = (permission) => {
   return async (req, res, next) => {
     const globalPermissions = req.locals.user.permissions
-    let projectPermissions = []
-    const projectRoles = await Project.getUserRolesInProject(req.locals.user.uuid, req.params.projectId)
-    await Promise.all(projectRoles.map(async (rolename) => {
-      projectPermissions = projectPermissions.concat(await Role.getRolePermissions(rolename))
+    let boardPermissions = []
+    const boardRoles = await Board.getUserRolesInBoard(req.locals.user.uuid, req.params.boardId)
+    await Promise.all(boardRoles.map(async (rolename) => {
+      boardPermissions = boardPermissions.concat(await Role.getRolePermissions(rolename))
     }))
-    let userPermissions = globalPermissions.concat(projectPermissions)
+    let userPermissions = globalPermissions.concat(boardPermissions)
     if(!req.locals.user.roles.includes("super admin")){
       userPermissions = userPermissions.filter(permission => 
         !req.locals.user.revokedPermissions.includes(permission)
@@ -100,11 +100,11 @@ exports.userHasAllPermissions = async (permissions, { req }) => {
   return true
 }
 
-/*This function implements the rule "Users can only grant projectroles that they own themselves"- might be useful in the future
+/*This function implements the rule "Users can only grant boardroles that they own themselves"- might be useful in the future
 exports.canUserGrantRole = (res, req, next) => {
   let targetRoles = []
   req.body.user.forEach(user => targetRoles = targetRoles.concat(user.roles))
-  if(targetRoles.every(targetRole => req.locals.user.projectRoles.includes(targetRole))){
+  if(targetRoles.every(targetRole => req.locals.user.boardRoles.includes(targetRole))){
     return next()
   }
   return res.status(401).send({ "message": "roleGrantDenied" })
