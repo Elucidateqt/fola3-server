@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt')
 const db = require('../models')
 const User = db.user
 const Role = db.role
+const CardSet = db.cardset
 const { validationResult } = require('express-validator')
 const registry = require('../lib/registry')
 const redis = registry.getService("redis")
@@ -22,6 +23,8 @@ const signUp = async (req, res, next) => {
     try {
         const roleId = await Role.getRoleIdByName("user")
         const user = await User.createUser(uuidv4(), req.body.username, req.body.email, bcrypt.hashSync(req.body.password,10), [roleId])
+        //create personal cardset for new users
+        const adminCardSet = await db.cardset.createCardSet(uuidv4(), {"en-US": "my cards"}, "", [], false, user._id)
         logger.log("info", `User ${user.username} created successfully!`)
         res.status(204).send({ "message": "userCreated", "user": user})
         next()

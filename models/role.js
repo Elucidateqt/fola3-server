@@ -100,7 +100,7 @@ const getAllRoles = async () => {
         ]).exec()
         return roles
     }catch(err){
-        throw new Error(`Error loading all boards from DB: \n ${err}`)
+        throw new Error(`Error loading all roles from DB: \n ${err}`)
     }
 }
 

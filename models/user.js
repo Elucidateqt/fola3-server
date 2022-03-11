@@ -45,11 +45,12 @@ const createUser = async (uuid, username, email, passHash, roleIds) => {
             "roles": roleIds
         }).save()
         return {
+            "_id": user._id,
             "uuid": user.uuid,
             "username": user.username,
             "email": user.email,
             "password": user.password,
-            "role": user.role
+            "roles": user.roles
         }
     }catch(err){
         throw new Error(`Error while creating user in DB: \n ${err}`)
@@ -116,7 +117,8 @@ const getUserByUuid = async (uuid) => {
                 "roles": { $push:  "$role.name" },
                 "permissions": {$push: "$role.permission.name"},
                 "revokedPermissions": { $first: "$revokedPermissions"},
-                "createdAt": { $first: "$createdAt"}
+                "createdAt": { $first: "$createdAt"},
+                "updatedAt": { $first: "$updatedAt"}
             }},
             {$lookup: {
                 from: 'permissions',

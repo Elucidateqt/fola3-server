@@ -30,7 +30,8 @@ exports.authenticateToken = (req, res, next) => {
           return res.sendStatus(403)
         }
         req.locals.user = user
-        req.locals.ua = req.get('user-agent')
+        req.locals.user.useragent = req.get('user-agent')
+        req.locals.user.effectivePermissions = user.permissions.filter(permission => !user.revokedPermissions.includes(permission))
         next()
       }
       catch (err) {

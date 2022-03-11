@@ -20,9 +20,11 @@ db.permission = require('./permission')
 db.user = require('./user')
 db.role = require('./role')
 db.board = require('./board')
+db.card = require('./card')
+db.cardset = require('./cardset')
 db.bugreport = require('./bugreport')
 
-const PERMISSIONS = ["USERS:CREATE",  "USERS:VIEW", "USERS:PROFILE:UPDATE", "USERS:PASSWORD:UPDATE", "USERS:ROLES:UPDATE", "USERS:PERMISSIONBLACKLIST:MANAGE", "USERS:DELETE", "BOARD:CREATE", "BOARDS:VIEW", "BOARD:MANAGE", "BOARD:DELETE", "BUGREPORT:CREATE", "BUGREPORTS:READ", "BUGREPORT:DELETE", "ROLES:CREATE", "ROLES:GRANT", "ROLES:REVOKE", "ROLES:VIEW", "ROLES:UPDATE", "ROLES:DELETE", "PERMISSIONS:CREATE", "PERMISSIONS:VIEW", "PERMISSIONS:UPDATE", "PERMISSIONS:GRANT", "PERMISSIONS:REVOKE", "PERMISSIONS:DELETE", "API:METRICS:READ"]
+const PERMISSIONS = ["USERS:CREATE",  "USERS:VIEW", "USERS:PROFILE:UPDATE", "USERS:PASSWORD:UPDATE", "USERS:ROLES:UPDATE", "USERS:PERMISSIONBLACKLIST:MANAGE", "USERS:DELETE", "BOARD:CREATE", "BOARDS:VIEW", "BOARD:MANAGE", "BOARD:DELETE", "BUGREPORT:CREATE", "BUGREPORTS:READ", "BUGREPORT:DELETE", "ROLES:CREATE", "ROLES:GRANT", "ROLES:REVOKE", "ROLES:VIEW", "ROLES:UPDATE", "ROLES:DELETE", "PERMISSIONS:CREATE", "PERMISSIONS:VIEW", "PERMISSIONS:UPDATE", "PERMISSIONS:GRANT", "PERMISSIONS:REVOKE", "PERMISSIONS:DELETE", "API:METRICS:READ", "API:CARDSETS:MANAGE", "API:CARDS:MANAGE"]
 
 db.BASE_ROLES = [
     {
@@ -90,12 +92,13 @@ db.initialize = async () => {
         let userCount = await db.user.getUserCount()
         if(userCount === 0){
             logger.log("info","no users found in DB. creating super user based on .env file...")
-            const roleIds = []
+            let roleIds = []
             for (const role of Object.values(db.BASE_ROLES)){
-                const permissionId = await db.role.getRoleIdByName(role.rolename)
-                roleIds.push(permissionId)
+                const roleId = await db.role.getRoleIdByName(role.rolename)
+                roleIds.push(roleId)
             }
-            const user = await db.user.createUser(uuidv4(), SUPER_ADMIN_NAME, SUPER_ADMIN_EMAIL, bcrypt.hashSync(SUPER_ADMIN_PW,10), roleIds)
+            const superadmin = await db.user.createUser(uuidv4(), SUPER_ADMIN_NAME, SUPER_ADMIN_EMAIL, bcrypt.hashSync(SUPER_ADMIN_PW,10), roleIds)
+            const adminCardSet = await db.cardset.createCardSet(uuidv4(), {"en-US": "my cards"}, "", [], false, superadmin._id)
             logger.log("info", "Super User created successfully")
         }
         let metricsUsers = await db.user.getUsersWithRole('metrics collector')

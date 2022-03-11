@@ -21,10 +21,7 @@ const Board = new mongoose.model(
             required: true
         },
         description: String,
-        inviteCode: {
-            type: String,
-            default: createRandomString(8)
-        },
+        inviteCode: String,
         members: [
             {
                 user: {
@@ -47,6 +44,7 @@ const createBoard = async (uuid, name, description, creatorId, creatorRoleIds) =
             "uuid": uuid,
             "name": name,
             "description": description,
+            "inviteCode": createRandomString(8),
             "members": [{user: creatorId, roles: creatorRoleIds }]
         }).save();
         return {

@@ -129,6 +129,8 @@ const connectMongoDB = async () => {
         const roleRoute = require('./routes/roles')
         const permissionRoute = require('./routes/permissions')
         const bugreportRoute = require('./routes/bugreports')
+        const cardsetRoute = require('./routes/cardsets')
+        const cardRoute = require('./routes/cards')
 
         
         //TODO: just for testing. remove
@@ -162,6 +164,8 @@ const connectMongoDB = async () => {
         app.use("/users", userRoute)
         app.use("/boards", boardRoute)
         app.use("/bugreports", bugreportRoute)
+        app.use("/cardsets", cardsetRoute)
+        app.use("/cards", cardRoute)
 
         server = http.createServer(app)
         server.listen(Port, () => {
@@ -181,7 +185,7 @@ const connectMongoDB = async () => {
             })
         })
     } catch (err) {
-        console.log(`error: \n ${err}`)
+        console.error(err)
         process.exit(1)
         
     }

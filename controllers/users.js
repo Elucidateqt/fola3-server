@@ -57,7 +57,7 @@ exports.getUser = async (req, res, next) => {
     }
 }
 
-exports.getAllUsers = async (req, res, next) => {
+exports.getAllUsers = async (req, res) => {
     try{
         const users = await User.getAllUsers()
         let userList = []
