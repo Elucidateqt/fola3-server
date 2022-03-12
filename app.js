@@ -1,6 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 const app = express()
+const { Server } = require("socket.io");
 const cors = require('cors')
 const mongoose = require('mongoose')
 mongoose.Promise = global.Promise
@@ -167,10 +168,28 @@ const connectMongoDB = async () => {
         app.use("/cardsets", cardsetRoute)
         app.use("/cards", cardRoute)
 
-        server = http.createServer(app)
+        const server = http.createServer(app)
+
+        
+        const io = new Server(server, {
+            path: "/socket/",
+            cors: {
+                origin: "http://localhost:8080",
+                allowedHeaders: ["my-custom-header"],
+                credentials: true
+              }
+          });
+
+        io.on('connection', (socket) => {
+            socket.on('message', (data) => {
+                io.emit('message', {"message": data.message})
+            })
+        });
+        
         server.listen(Port, () => {
             logger.log('info', `Server running on Port ${Port}`)
         })
+
         // Graceful shutdown
         process.on('SIGTERM', () => {
             clearInterval(prometheus.client)

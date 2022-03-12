@@ -29,6 +29,7 @@
     "mongoose": "^6.0.12",
     "prom-client": "^14.0.1",
     "redis": "^4.0.1",
+    "socket.io": "^4.4.1",
     "uuid": "^8.3.2",
     "winston": "^3.3.3"
   },
