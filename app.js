@@ -6,6 +6,7 @@ const cors = require('cors')
 const mongoose = require('mongoose')
 mongoose.Promise = global.Promise
 const Port = process.env.PORT || 8081
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:8080'
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost'
 const REDIS_PORT = process.env.REDIS_PORT || 6379
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD || null
@@ -171,20 +172,19 @@ const connectMongoDB = async () => {
         const server = http.createServer(app)
 
         
-        const io = new Server(server, {
+        const socketio = new Server(server, {
             path: "/socket/",
             cors: {
-                origin: "http://localhost:8080",
+                origin: CLIENT_URL,
                 allowedHeaders: ["my-custom-header"],
                 credentials: true
               }
           });
 
-        io.on('connection', (socket) => {
-            socket.on('message', (data) => {
-                io.emit('message', {"message": data.message})
-            })
-        });
+        const io = registry.registerSocketIO(socketio)
+
+        const socketController = require('./controllers/socketio.js')
+        socketController.initializeListeners()
         
         server.listen(Port, () => {
             logger.log('info', `Server running on Port ${Port}`)
