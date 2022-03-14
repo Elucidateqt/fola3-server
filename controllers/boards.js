@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid')
 const User = db.user
 const Board = db.board
 const Role = db.role
+const Deck = db.deck
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'boardController' })
 const { validationResult } = require('express-validator')
@@ -28,7 +29,16 @@ exports.createBoard = async (req, res, next) => {
             roleIds.push(role._id)
             roleNames.push(role.name)
         })
-        const board = await Board.createBoard(uuidv4(), boardName, boardDescription, user._id, roleIds)
+        
+        const cards = await Deck.getCardsInDeck(req.body.creatorDeck)
+        cards.forEach(card => {
+            delete card._id
+            //assign new uuid to prevent id-collisions if two players imported the same card into a board
+            card.uuid = uuidv4()
+
+        })
+        
+        const board = await Board.createBoard(uuidv4(), boardName, boardDescription, user._id, roleIds, cards)
         delete board._id
         board.members[0].uuid = req.locals.user.uuid
         board.members[0].username = req.locals.user.username
@@ -150,7 +160,6 @@ exports.createNewInviteCode = async (req, res) => {
 }
 
 exports.joinWithCode = async (req, res) => {
-    console.log("ARRIVED 1")
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
@@ -159,12 +168,10 @@ exports.joinWithCode = async (req, res) => {
     const isBearerInBoard = req.locals.board.members.some(member => {
         return member.uuid === req.locals.user.uuid
     })
-    console.log("ARRIVED")
     if(isBearerInBoard){
         res.status(400).send({ error: 'already_member'})
         return
     }
-    console.log("checking")
     if(req.query.inv !== req.locals.board.inviteCode){
         console.log("invalid code")
         res.status(403).json({ error: 'invite.invalid'})
@@ -172,7 +179,19 @@ exports.joinWithCode = async (req, res) => {
     }
     try{
         const roles = await Role.getBoardRolesByNameList(['boardMember'])
-        await Board.addMembersToBoard(req.params.boardId, [{user: req.locals.user._id, roles: [roles[0]._id]}])
+        
+        //TODO: require actual deck in request and get cards
+        const cards = await Deck.getCardsInDeck(req.body.deckId)
+        console.log("cardResult", cards)
+        cards.forEach(card => {
+            delete card._id
+            //assign new uuid to prevent id-collisions if two players imported the same card into a board
+            card.uuid = uuidv4()
+
+        })
+        console.log("cards updated", cards)
+
+        await Board.addMembersToBoard(req.params.boardId, [{ user: req.locals.user._id, roles: [roles[0]._id], cards: cards }])
         res.sendStatus(204)
     }catch(err){
         logger.log('error', err)

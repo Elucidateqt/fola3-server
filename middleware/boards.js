@@ -6,7 +6,6 @@ const { validationResult } = require('express-validator')
 
 
 exports.loadBoard = async (req, res, next) => {
-    console.log("loading board")
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -17,7 +16,6 @@ exports.loadBoard = async (req, res, next) => {
             return res.sendStatus(404)
         }
         req.locals.board = board
-        console.log("board loaded")
         next()
     }catch(err){
         logger.log('error', err)

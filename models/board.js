@@ -20,6 +20,7 @@ const Board = new mongoose.model(
             type: String,
             required: true
         },
+        boardState: [[Object]],
         description: String,
         inviteCode: String,
         members: [
@@ -31,29 +32,31 @@ const Board = new mongoose.model(
                 roles: [{
                     type: mongoose.Schema.Types.ObjectId,
                     ref: "Role"
-                }]
+                }],
+                cards: [Object]
             }
         ]
     },
     { timestamps: true })
 )
 
-const createBoard = async (uuid, name, description, creatorId, creatorRoleIds) => {
+const createBoard = async (uuid, name, description, creatorId, creatorRoleIds, creatorCards) => {
     try{
         const board = await new Board({
             "uuid": uuid,
             "name": name,
             "description": description,
             "inviteCode": createRandomString(8),
-            "members": [{user: creatorId, roles: creatorRoleIds }]
+            "members": [{user: creatorId, roles: creatorRoleIds, cards: creatorCards }]
         }).save();
+        console.log("board created", board.members[0].cards)
         return {
             "_id" : board._id,
             "uuid" : board.uuid,
             "name" : board.name,
             "inviteCode": board.inviteCode,
             "description" : board.description,
-            "members": [{"uuid": creatorId, "roles": creatorRoleIds }],
+            "members": [{"uuid": creatorId, "roles": creatorRoleIds, "cards": creatorCards }],
             "createdAt": board.createdAt,
             "updatedAt": board.updatedAt
         }
@@ -91,8 +94,10 @@ const getBoardByUuid = async (uuid) => {
                 "boardname": { $first: "$name" },
                 "boardInviteCode": { $first: "$inviteCode"},
                 "boarddescription": { $first: "$description" },
+                "boardState": {$first: "$boardState"},
                 "boardroles": {$push: "$member.roledoc.name"},
                 "username": { $first: "$member.userdoc.username"},
+                "cards": {$first: "$members.cards"},
                 "uuid": { $first: "$member.userdoc.uuid"},
                 "boardCreatedAt": { $first: "$createdAt"},
                 "boardUpdatedAt": { $first: "$updatedAt"},
@@ -105,11 +110,13 @@ const getBoardByUuid = async (uuid) => {
                 "inviteCode": { $first: "$boardInviteCode"},
                 "createdAt": {$first: "$boardCreatedAt"},
                 "updatedAt": {$first: "$boardUpdatedAt"},
+                "boardState": {$first: "$boardState"},
                 "members": {
                     $push: {
                         "username": "$username",
                         "uuid": "$uuid",
-                        "boardroles": "$boardroles"
+                        "boardroles": "$boardroles",
+                        "cards": "$cards"
                     }
                 },
             }},
