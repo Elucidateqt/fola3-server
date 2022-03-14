@@ -9,6 +9,11 @@ const initializeListeners = () => {
             logger.log('info', `message received: ${data.message}`)
             io.emit('message', {"message": data.message})
         })
+
+        socket.on('playInteraction', (data) => {
+            logger.log('info', `playInteraction received: ${data.card}`)
+            io.emit('playInteraction', {"card": data.card})
+        })
     });
 }
 
