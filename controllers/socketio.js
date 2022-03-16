@@ -15,9 +15,19 @@ const initializeListeners = () => {
             io.emit('playInteraction', {"card": data.card})
         })
 
+        socket.on('addCard', (data) => {
+            logger.log('info', `addCard received ${data.card.uuid}`)
+            io.emit('addCard', {"card": data.card, "location": data.location})
+        })
+
         socket.on('removeCard', (data) => {
             logger.log('info', `removeCard received ${data.cardId}`)
             io.emit('removeCard', {"cardId": data.cardId, "location": data.location})
+        })
+
+        socket.on('updateCard', (data) => {
+            logger.log('info', `updateCard received ${data.card.uuid}`)
+            io.emit('updateCard', {"card": data.card, "location": data.location})
         })
     });
 }

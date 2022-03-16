@@ -35,7 +35,10 @@ exports.createBoard = async (req, res, next) => {
             delete card._id
             //assign new uuid to prevent id-collisions if two players imported the same card into a board
             card.uuid = uuidv4()
-
+            if(card.cardType === "interaction"){
+                card.addonsTop = []
+                card.addonsBot = []
+            }
         })
         
         const board = await Board.createBoard(uuidv4(), boardName, boardDescription, user._id, roleIds, cards)
@@ -187,6 +190,11 @@ exports.joinWithCode = async (req, res) => {
             delete card._id
             //assign new uuid to prevent id-collisions if two players imported the same card into a board
             card.uuid = uuidv4()
+            
+            if(card.cardType === "interaction"){
+                card.addonsTop = []
+                card.addonsBot = []
+            }
 
         })
         console.log("cards updated", cards)
