@@ -13,6 +13,10 @@ const PROMETHEUS_USERNAME = process.env.prometheus_username || 'Prometheus'
 const PROMETHEUS_PASSWORD = process.env.prometheus_password || '123456'
 const PROMETHEUS_EMAIL = process.env.prometheus_mail || 'prometheus@apiTest.com'
 
+const PUBLIC_USERNAME = process.env.PUBLIC_ACC_USERNAME || 'public'
+const PUBLIC_PASSWORD = process.env.PUBLIC_ACC_PASSWORD || 'public'
+const PUBLIC_EMAIL = process.env.PUBLIC_ACC_MAIL || 'public@apiTest.com'
+
 
 const db = {}
 
@@ -77,7 +81,7 @@ db.initialize = async () => {
             }))
             logger.log("info", "All required permissions created successfully.")
         }
-        //check if site wide roles exist in db and add super admin as a starting-point
+        //check if site wide roles exist in db and add roles defined above as a starting-point
         const roleCount = await db.role.getRoleCount()
         if(roleCount === 0){
             logger.log("info","no roles found. creating roles...")
@@ -99,9 +103,26 @@ db.initialize = async () => {
                 roleIds.push(roleId)
             }
             const superadmin = await db.user.createUser(uuidv4(), SUPER_ADMIN_NAME, SUPER_ADMIN_EMAIL, bcrypt.hashSync(SUPER_ADMIN_PW,10), roleIds)
-            const adminCardSet = await db.cardset.createCardSet(uuidv4(), {"en-US": "my cards"}, "", [], false, superadmin._id)
+            const adminCardSet = await db.cardset.createCardSet(uuidv4(),"my cards", "", [], false, superadmin._id)
             logger.log("info", "Super User created successfully")
         }
+        //create user to hold public content
+        let publicUser = await db.user.getUserByEmail(PUBLIC_EMAIL)
+        if(!publicUser){
+            logger.log('info',"User for public content not found. Creating user...")
+            const userRoleId = await db.role.getRoleIdByName('user')
+            publicUser = await db.user.createUser(uuidv4(), PUBLIC_USERNAME, PUBLIC_EMAIL, bcrypt.hashSync(PUBLIC_PASSWORD, 10), [userRoleId])
+            logger.log("info","Public content user created successfully")
+        }
+
+        const baseSetExists = await db.cardset.setExists("Basic Set")
+        if(!baseSetExists){
+            logger.log('info',"Basic cardset not found. Creating cardset...")
+            const baseSet = await db.cardset.createCardSet(uuidv4(), "Basic Set", null, [], false, publicUser._id)
+            logger.log("info","Basic cardset created successfully")
+        }
+
+
         let metricsUsers = await db.user.getUsersWithRole('metrics collector')
         let prometheusUser =  metricsUsers.find(user => user.username === PROMETHEUS_USERNAME)
         if(prometheusUser !== undefined){

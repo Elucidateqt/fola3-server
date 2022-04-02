@@ -133,6 +133,7 @@ const connectMongoDB = async () => {
         const bugreportRoute = require('./routes/bugreports')
         const cardsetRoute = require('./routes/cardsets')
         const cardRoute = require('./routes/cards')
+        const deckRoute = require('./routes/decks')
 
         
         //TODO: just for testing. remove
@@ -168,6 +169,7 @@ const connectMongoDB = async () => {
         app.use("/bugreports", bugreportRoute)
         app.use("/cardsets", cardsetRoute)
         app.use("/cards", cardRoute)
+        app.use("/decks", deckRoute)
 
         const server = http.createServer(app)
 

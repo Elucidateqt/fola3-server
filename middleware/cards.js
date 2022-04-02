@@ -37,8 +37,7 @@ exports.isOwnerOrManager = async (req, res, next) => {
     }
     try{
         const bearerSets = await CardSet.getCardSetsOfUser(req.locals.user._id)
-        let isOwnerOfCard = false
-        isOwnerOfCard = bearerSets.some(set => set.cards.includes(req.locals.card._id))
+        const isOwnerOfCard = bearerSets.some(set => set.cards.includes(req.locals.card._id))
         if(!isOwnerOfCard){
             return res.sendStatus(403)
         }

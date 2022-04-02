@@ -6,21 +6,15 @@ const CardSchema = new mongoose.Schema(
             type: String,
             required: true
         },
-        "names": {
-            "en-US": {
-                type: String,
-                required: true,
-                default: "no name specified"
-            },
-            "de-DE": String
+        "name": {
+            type: String,
+            required: true,
+            default: "New Card"
         },
-        "descriptions": {
-            "en-US": {
-                type: String,
-                required: true,
-                default: "no description specified"
-            },
-            "de-DE": String
+        "description": {
+            type: String,
+            required: true,
+            default: "New Card"
         },
         "cardType": {
             type: String,
@@ -37,14 +31,19 @@ const CardSchema = new mongoose.Schema(
     { timestamps: true }
 )
 
-CardSchema.pre('remove', async (doc) => {
-    const card = this
-    //remove role from all board-members if it's a board role
-    if(card.scope === 'board'){
-        await this.model.cardsets.update({ "cards": {$elemMatch: card._id}},
-            {$pull: {"cards": card._id}},
-        )
+CardSchema.pre('deleteOne', async function(next) {
+    const card = await mongoose.models.Card.findOne(this.getQuery())
+    //remove card from all cardsets
+    try {
+        await mongoose.models.CardSet.updateMany(
+            { },
+            { "$pull": { "cards": card._id } },
+            { "multi": true });
+            next()
+        } catch (err) {
+        throw new Error(err)
     }
+    console.log("removed card from cardsets")
     // TODO: remove card from all decks
 });
 
@@ -59,8 +58,9 @@ const createCard = async (config) => {
         const result = await new Card(config).save()
         const card = {
             "_id": result._id,
-            "names": result.names,
-            "descriptions": result.descriptions,
+            "uuid": result.uuid,
+            "name": result.name,
+            "description": result.description,
             "updatedAt": result.updatedAt,
             "createdAt": result.createdAt,
             "interactionSubjectLeft": result.interactionSubjectLeft,
@@ -73,7 +73,7 @@ const createCard = async (config) => {
         }
         return card
     }catch(err){
-        throw new Error(`Error while creating card ${config.names.enUS} in DB: \n ${err}`)
+        throw new Error(`Error while creating card ${config.name} in DB: \n ${err}`)
     }
 }
 
@@ -90,26 +90,29 @@ const getCards = async (options) => {
     let matchAggregator = {$match: {}},
     sortBy = options.sortBy || 'updatedAt',
     dir = options.sortDir === 'ASC' ? 1 : -1,
-    limit = options.limit || 10,
+    limit = options.limit || 50,
     offset = options.offset || 0
     //build match aggregator dynamically based on provided options
-    if(options.hasOwnProperty('cardIds') && options.cardIds.length > 0){
-        matchAggregator._id = { $in: cardIds}
+    if(options.hasOwnProperty('cardIds')){
+        matchAggregator.$match._id = { $in: options.cardIds}
+    }
+    if(options.hasOwnProperty('cardUuids')){
+        matchAggregator.$match.uuid = { $in: options.cardUuids}
     }
     if(options.hasOwnProperty('type')){
-        matchAggregator.cardType = options.type
+        matchAggregator.$match.cardType = options.type
     }
     if(options.hasOwnProperty('subjectLeft')){
-        matchAggregator.subjectLeft = options.subjectLeft
+        matchAggregator.$match.subjectLeft = options.subjectLeft
     }
     if(options.hasOwnProperty('subjectRight')){
-        matchAggregator.subjectRight = options.subjectRight
+        matchAggregator.$match.subjectRight = options.subjectRight
     }
     if(options.hasOwnProperty('interactionDirection')){
-        matchAggregator.interactionDirection = options.interactionDirection
+        matchAggregator.$match.interactionDirection = options.interactionDirection
     }
     try{
-        const cards = Card.aggregate([
+        const cards = await Card.aggregate([
             matchAggregator,
             {$sort: {[sortBy]: dir}},
             {$skip: offset},
@@ -127,8 +130,8 @@ const getCards = async (options) => {
 const updateCard = async (uuid, config) => {
     try{
         const result = await Card.findOneAndUpdate({"uuid": uuid},{
-            "names": config.names,
-            "descriptions": config.descriptions,
+            "name": config.name,
+            "description": config.description,
             "interactionSubjectLeft": config.interactionSubjectLeft,
             "interactionSubjectRight": config.interactionSubjectRight,
             "interactionDirection": config.interactionDirection,
@@ -139,8 +142,9 @@ const updateCard = async (uuid, config) => {
         }).exec()
         const card = {
             "_id": result._id,
-            "names": result.names,
-            "descriptions": result.descriptions,
+            "uuid": result.uuid,
+            "name": result.name,
+            "description": result.description,
             "updatedAt": result.updatedAt,
             "createdAt": result.createdAt,
             "interactionSubjectLeft": result.interactionSubjectLeft,
@@ -169,7 +173,7 @@ const getCardCount = async () => {
 
 const cardExists = async (setName) => {
     try{
-        const result = await CardSet.exists({"name": setName})
+        const result = await Card.exists({"name": setName})
         return result
     }catch(err){
         throw new Error(`Error in models.card.cardExists: \n ${err}`)
@@ -178,7 +182,7 @@ const cardExists = async (setName) => {
 
 const deleteCard = async (uuid) => {
     try{
-        await Card.deleteOne({"uuid": uuid})
+        await Card.deleteOne({"uuid": uuid}).exec()
     }catch(err){
         throw new Error(`Error deleting card with uuid ${uuid} from DB: \n ${err}`)
     }

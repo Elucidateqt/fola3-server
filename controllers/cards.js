@@ -8,16 +8,18 @@ const { v4: uuidv4 } = require('uuid')
 const logger = registry.getService('logger').child({ component: 'CardController'})
 const { validationResult } = require('express-validator')
 
+const PUBLIC_EMAIL = process.env.PUBLIC_ACC_MAIL || 'public@apiTest.com'
+
 exports.createCard = async (req, res) => {
     
     try{
-        let cardNames = req.body.names || {"en-US": "New Set"},
-        cardDescriptions = req.body.descriptions || {"en-US": "New Description"}
+        let cardName = req.body.name || "New Card",
+        cardDescription = req.body.description || "New Description"
         const config = {
             "uuid": uuidv4(),
-            "names": cardNames,
-            "descriptions": cardDescriptions,
-            "cardType": req.body.cardType,
+            "name": cardName,
+            "description": cardDescription,
+            "cardType": req.body.type,
             "interactionSubjectLeft": req.body.interactionSubjectLeft,
             "interactionSubjectRight": req.body.interactionSubjectRight,
             "interactionDirection": req.body.interactionDirection,
@@ -27,7 +29,12 @@ exports.createCard = async (req, res) => {
             "requiredSensors": req.body.requiredSensors || []
         }
         const card = await Card.createCard(config)
-        logger.log('info', `User ${req.locals.user.uuid} created permission ${req.body.name}`)
+        logger.log('info', `User ${req.locals.user.uuid} created card ${card.uuid}`)
+        //TODO: refactor reference addition into mongoose-middleware
+        const userSets = await CardSet.getCardSetsOfUser(req.locals.user._id)
+        CardSet.addCardsToSet(userSets[0].uuid, [card._id])
+        logger.log('info', `Added card ${card.uuid} to set ${userSets[0].uuid}`)
+        delete card._id
         res.json({'card': card})
     }catch(err){
         logger.log('error', err)
@@ -41,8 +48,7 @@ exports.getCards = async (req, res) => {
       res.status(400).json({ errors: errors.array() });
       return
     }
-    let ownerId = null,
-    cardIds = []
+    let cardIds = []
     try {
         const config = {}
         if(req.query.type){
@@ -57,21 +63,11 @@ exports.getCards = async (req, res) => {
         if(req.query.interactionDirection){
             config.interactionDirection = req.query.interactionDirection
         }
-        if(req.query.owner){
-            const owner = await User.getUserByUuid(req.query.owner)
-            if(!owner){
-                return res.json({"cards": []})
-            }
-            const ownerSets = await CardSet.getCardSetsOfUser(owner._id)
-            ownerSets.forEach(set => cardIds = cardIds.concat(set.cards))
-        }
-        const bearerIsOwner = ownerId !== null && ownerId.equals(req.locals.user._id)
-        if(!bearerIsOwner && !req.locals.user.effectivePermissions.includes('API:CARDS:MANAGE')){
-            return res.sendStatus(403)
-        }
-        if(cardIds.length > 0) {
-            config.cardIds = cardIds
-        }
+        config.limit = parseInt(req.query.limit)
+        config.offset = parseInt(req.query.offset)
+        req.locals.cardsets.forEach(set => cardIds = cardIds.concat(set.cards.map(card => card._id)))
+        config.cardIds = cardIds
+
         const cards = await Card.getCards(config)
         res.json({"cards": cards})
         
@@ -89,8 +85,10 @@ exports.updateCard = async (req, res) => {
       return
     }
     try {
+        console.log("req.body", req.body)
         const config = {
-            "names": req.body.names || req.locals.card.names,
+            "name": req.body.name || req.locals.card.name,
+            "description": req.body.description || req.locals.card.description,
             "cardType": req.body.cardType || req.locals.card.cardType,
             "interactionSubjectLeft": req.body.interactionSubjectLeft || req.locals.card.interactionSubjectLeft,
             "interactionSubjectRight": req.body.interactionSubjectRight || req.locals.card.interactionSubjectRight,
@@ -100,7 +98,9 @@ exports.updateCard = async (req, res) => {
             "LTEsensors": req.body.lteSensors || req.locals.card.LTEsensors,
             "requiredSensors": req.body.requiredSensors || req.locals.card.requiredSensors
         }
+        console.log("config", config)
         const newCard = await Card.updateCard(req.locals.card.uuid, config)
+        console.log("card updated", newCard)
         delete newCard._id
         logger.log('info', `User ${req.locals.user.uuid} updated card ${req.locals.card.uuid}`)
         res.json({"card": newCard})
@@ -121,7 +121,7 @@ exports.getCard = async (req, res) => {
     res.json("card", req.locals.card)
 }
 
-exports.getCardsAvailableToBearer = async (req, res) => {
+exports.getCardsOfBearer = async (req, res) => {
     try{
         let container = [],
         idList = []
@@ -159,9 +159,10 @@ exports.getCardsAvailableToBearer = async (req, res) => {
 
 exports.deleteCard = async (req, res) => {
     try{
+        console.log("card", req.locals.card)
         await Card.deleteCard(req.locals.card.uuid)
         res.sendStatus(204)
-        logger.log("info", `user ${req.locals.user.uuid} deleted permission ${req.locals.card.uuid}`)
+        logger.log("info", `user ${req.locals.user.uuid} deleted card ${req.locals.card.uuid}`)
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)

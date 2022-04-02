@@ -37,14 +37,12 @@ const Deck = mongoose.model(
 )
 
 
-const createDeck = async (uuid, name, iconUrl, cardIds, isPublic, ownerId) => {
-    console.log(`creating cardset for ${ownerId} \n\n\n\n\n`)
+const createDeck = async (uuid, name, cardIds, ownerId) => {
+    console.log(`creating Deck for ${ownerId} \n\n\n\n\n`)
     try{
         const result = await new CardSet({
             "uuid": uuid,
-            "names": names,
-            "public": isPublic,
-            "iconUrl": iconUrl,
+            "name": name,
             "cards": cardIds,
             "owner": ownerId
         }).save()
@@ -52,9 +50,7 @@ const createDeck = async (uuid, name, iconUrl, cardIds, isPublic, ownerId) => {
             "_id": result._id,
             "uuid": result.uuid,
             "names": result.names,
-            "public": result.public,
             "cardCount": result.cards.length,
-            "iconUrl": result.iconUrl,
             "owner": result.ownerId,
             "updatedAt": result.updatedAt,
             "createdAt": result.createdAt
@@ -62,20 +58,20 @@ const createDeck = async (uuid, name, iconUrl, cardIds, isPublic, ownerId) => {
         return set
     }catch(err){
         logger.error(err)
-        throw new Error(`Error while creating cardset ${names.enUS} in DB: \n ${err}`)
+        throw new Error(`Error while creating deck ${name} in DB: \n ${err}`)
     }
 }
 
-const getCardSets = async (options) => {
+const getDecks = async (options) => {
     //TODO: test sorting
-    let matchAggregator = options.hasOwnProperty('public') ? {$match: { "public": options.public}} : {$match: {}}
-    if(options.hasOwnProperty('owner')){
-        matchAggregator.$match['owner'] = options.owner
+    let matchAggregator = options.hasOwnProperty('owner') ? {$match: { "owner": options.ownerId}} : {$match: {}}
+    if(options.hasOwnProperty('public')){
+        matchAggregator.$match['public'] = options.public
     }
     const sortBy = options.hasOwnProperty('sortBy') ? options.sortBy : 'updatedAt'
     const dir = options.sortDir === 'ASC' ? 1 : -1
     try{
-        const sets = await CardSet.aggregate([
+        const decks = await Deck.aggregate([
             matchAggregator,
             {$lookup: {
                 from: 'users',
@@ -83,47 +79,26 @@ const getCardSets = async (options) => {
                 foreignField: '_id',
                 as: 'owner'
             }},
+            {$lookup: {
+                from: 'cards',
+                localField: 'cards',
+                foreignField: '_id',
+                as: 'cards'
+            }},
             {$sort: {[sortBy]: dir}}
         ]).exec()
-        return sets
+        return decks
     }catch(err){
         logger.error(err)
-        throw new Error(`Error loading sets from DB: \n ${err}`)
+        throw new Error(`Error loading decks from DB: \n ${err}`)
     }
 }
 
-const getAllCardSets = async () => {
+const getDeckByUuid = async (uuid) => {
     try {
-        const sets = await CardSet.find({}).exec()
+        const sets = await Deck.find({"uuid": uuid}).populate('owner').populate('cards').exec()
         return sets
-        
     } catch (err) {
-        logger.error(err)
-        throw new Error(`Error loading all sets from DB: \n ${err}`)
-    }
-}
-
-const getPublicCardSets = async () => {
-    try{
-        const sets  = await CardSet.aggregate([
-            {$match: {'public': true, 'owner': null} },
-            {$project: {'_id': 0}}
-        ]).exec()
-        return sets
-    }catch(err){
-        logger.error(err)
-        throw new Error(`Error loading all sets from DB: \n ${err}`)
-    }
-}
-
-const getWIPCardSets = async () => {
-    try{
-        const sets  = await CardSet.aggregate([
-            {$match: {'public': false, 'owner': null} },
-            {$project: {'_id': 0}}
-        ]).exec()
-        return sets
-    }catch(err){
         logger.error(err)
         throw new Error(`Error loading all sets from DB: \n ${err}`)
     }
@@ -132,7 +107,7 @@ const getWIPCardSets = async () => {
 const getCardsInDeck = async (uuid) => {
     try{
         const result = await Deck.findOne({"uuid": uuid}).populate("cards").exec()
-        console.log("set loaded", result)
+        console.log("deck cards loaded", result)
         const dummyResult =
             [{
                 uuid: "e6c69ea8-ffe1-49ed-8e1a-c6cbaf7cfea0",
@@ -186,104 +161,45 @@ const getCardsInDeck = async (uuid) => {
     }
 }
 
-const getCardSetByUuid = async (uuid) => {
-    try{
-        const set = await CardSet.findOne({"uuid": uuid}).populate('cards').populate('owner').exec()
-        return {
-            "uuid": set.uuid,
-            "owner": set.owner.uuid,
-            "cards": set.cards,
-            "names": set.names,
-            "public": set.public
-        }
-        return set
-    }catch(err){
-        throw new Error(`Error getting cardset by uuid ${uuid} from DB: \n ${err}`)
-    }
-}
 
-const getCardSetsOfUser = async (userId) => {
-    try{
-        const set = await CardSet.find({"owner": userId}).populate('cards').exec()
-        return set
-    }catch(err){
-        logger.error(err)
-        throw new Error(`Error getting cardsets of user ${uuid} from DB: \n ${err}`)
-    }
-}
-
-const getSetCount = async () => {
+const getDeckCount = async () => {
     try {
-        const result = await CardSet.estimatedDocumentCount().exec()
+        const result = await Deck.estimatedDocumentCount().exec()
         return result
     }catch(err){
-        throw new Error(`Error while loading cardset-count from DB: \n ${err}`)
+        throw new Error(`Error while loading deck-count from DB: \n ${err}`)
     }
 }
 
-const addCardsToSet = async(uuid, cardIds) => {
+const updateDeck = async(uuid, deck) => {
     try{
-        await CardSet.updateOne({uuid: uuid},
-            {$push: {"cards": {$each: cardIds}}}
+        await Deck.updateOne({uuid: uuid},
+            {
+                "name": deck.name,
+                "owner": deck.ownerId,
+                "cards": deck.cards
+            }
         ).exec()
     }catch(err){
         throw new Error(`Error adding cards to set: ${err}`)
     }
 }
 
-const removeCardsFromSet = async (uuid, cardIds) => {
+const deckExists = async (name) => {
     try{
-        await CardSet.updateOne({
-            uuid: uuid
-        },
-        {$pull: {"cards": {$in: cardIds}}})
-        .exec()
-    }catch(err){
-        throw new Error(`Error removing cards from set: ${err}`)
-    }
-}
-
-const isCardinSet = async (uuid, cardId) => {
-    try{
-        const set = await CardSet.findOne({
-            uuid: uuid
-        }).exec()
-        return set.cards.some(card => card._id === cardId)
-    }catch(err){
-        throw new Error(`Error in models.cardset.isCardInSet: \n ${err}`)
-    }
-}
-
-const setExists = async (setName) => {
-    try{
-        const result = await CardSet.exists({"name": setName})
+        const result = await Deck.exists({"name": name})
         return result
     }catch(err){
         throw new Error(`Error in models.cardset.setExists: \n ${err}`)
     }
 }
 
-const updateSet = async (uuid, newSet) => {
+const deleteDeck = async (id) => {
     try{
-        await CardSet.updateOne({"uuid": uuid},{
-            "uuid": newSet.uuid,
-            "name": newSet.names,
-            "public": newSet.isPublic,
-            "owner": newSet.owner,
-            "iconUrl": newSet.iconUrl,
-            "cards": newSet.cardIds
-        })
+        await Deck.deleteOne({"_id": id})
     }catch(err){
-        throw new Error(`Error updating cardset with uuid ${uuid} in DB: \n ${err}`)
+        throw new Error(`Error deleting deck with uuid ${uuid} from DB: \n ${err}`)
     }
 }
 
-const deleteSet = async (uuid) => {
-    try{
-        await CardSet.deleteOne({"uuid": uuid})
-    }catch(err){
-        throw new Error(`Error deleting cardset with uuid ${uuid} from DB: \n ${err}`)
-    }
-}
-
-module.exports = {createDeck, getCardSets, getAllCardSets, getCardSetsOfUser, getWIPCardSets, getCardSetByUuid, getCardsInDeck, getPublicCardSets, getSetCount, updateSet, setExists, addCardsToSet, removeCardsFromSet, isCardinSet, deleteSet}
+module.exports = {createDeck, getDecks, getDeckByUuid, updateDeck, getCardsInDeck, getDeckCount, deckExists, deleteDeck}

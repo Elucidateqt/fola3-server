@@ -8,16 +8,16 @@ const controller = require('../controllers/cardsets')
 const { body, param, query } = require('express-validator')
 
 router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission('API:CARDSETS:MANAGE'),
-body('owner').optional().trim().isUUID(),
+body('owner').exists().trim().custom(cardSetMiddleware.isOwnerParamValid),
 body('public').optional().isBoolean(),
-body("names.*").optional().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlpha('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
+body("name").optional().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlpha('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
 body('cards.*').optional().isUUID(),
 body('iconUrl').optional().isURL(),
 controller.createCardSet)
 
 
 router.get('/', authMiddleware.authenticateToken,
-query('owner').optional().trim().isUUID(),
+query('owner').exists().trim().custom(cardSetMiddleware.isOwnerParamValid),
 query('public').optional().isBoolean(),
 controller.getCardSets)
 

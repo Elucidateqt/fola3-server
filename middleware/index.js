@@ -6,5 +6,6 @@ middleware.permission = require('./permissions')
 middleware.role = require('./roles')
 middleware.card = require('./cards')
 middleware.cardset = require('./cardsets')
+middleware.deck = require('./decks')
 
 module.exports = middleware

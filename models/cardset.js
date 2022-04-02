@@ -10,15 +10,13 @@ const CardSetSchema = new mongoose.Schema(
         },
         "owner": {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
+            ref: "User",
+            required: true
         },
-        "names": {
-            "en-US": {
-                type: String,
-                required: true,
-                default: "my cards"
-            },
-            "de-DE": String
+        "name": {
+            type: String,
+            required: true,
+            default: "new cardset"
         },
         "public": {
             type: Boolean,
@@ -43,12 +41,11 @@ const CardSet = mongoose.model(
 )
 
 
-const createCardSet = async (uuid, names, iconUrl, cardIds, isPublic, ownerId) => {
-    console.log(`creating cardset for ${ownerId} \n\n\n\n\n`)
+const createCardSet = async (uuid, name, iconUrl, cardIds, isPublic, ownerId) => {
     try{
         const result = await new CardSet({
             "uuid": uuid,
-            "names": names,
+            "name": name,
             "public": isPublic,
             "iconUrl": iconUrl,
             "cards": cardIds,
@@ -57,7 +54,7 @@ const createCardSet = async (uuid, names, iconUrl, cardIds, isPublic, ownerId) =
         const set = {
             "_id": result._id,
             "uuid": result.uuid,
-            "names": result.names,
+            "name": result.name,
             "public": result.public,
             "cardCount": result.cards.length,
             "iconUrl": result.iconUrl,
@@ -80,6 +77,7 @@ const getCardSets = async (options) => {
     }
     const sortBy = options.hasOwnProperty('sortBy') ? options.sortBy : 'updatedAt'
     const dir = options.sortDir === 'ASC' ? 1 : -1
+    console.log("matchaggregator", matchAggregator)
     try{
         const sets = await CardSet.aggregate([
             matchAggregator,
@@ -88,6 +86,12 @@ const getCardSets = async (options) => {
                 localField: 'owner',
                 foreignField: '_id',
                 as: 'owner'
+            }},
+            {$lookup: {
+                from: 'cards',
+                localField: 'cards',
+                foreignField: '_id',
+                as: 'cards'
             }},
             {$sort: {[sortBy]: dir}}
         ]).exec()
@@ -109,29 +113,29 @@ const getAllCardSets = async () => {
     }
 }
 
-const getPublicCardSets = async () => {
-    try{
+getPublicCardSetsOfUser = async (userId) => {
+    try {
         const sets  = await CardSet.aggregate([
-            {$match: {'public': true, 'owner': null} },
+            {$match: {'public': false, 'owner': userId} },
             {$project: {'_id': 0}}
         ]).exec()
         return sets
-    }catch(err){
+    } catch (err) {
         logger.error(err)
-        throw new Error(`Error loading all sets from DB: \n ${err}`)
+        throw new Error(`Error loading public sets of user ${userId} from DB: \n ${err}`)
     }
 }
 
-const getWIPCardSets = async () => {
+const getWIPCardSets = async (publicUserId) => {
     try{
         const sets  = await CardSet.aggregate([
-            {$match: {'public': false, 'owner': null} },
+            {$match: {'public': false, 'owner': publicUserId} },
             {$project: {'_id': 0}}
         ]).exec()
         return sets
     }catch(err){
         logger.error(err)
-        throw new Error(`Error loading all sets from DB: \n ${err}`)
+        throw new Error(`Error loading WIP sets from DB: \n ${err}`)
     }
 }
 
@@ -176,15 +180,14 @@ const getCardsInSet = async (uuid, options = {sortBy: 'updatedAt', ascending: fa
 
 const getCardSetByUuid = async (uuid) => {
     try{
-        const set = await CardSet.findOne({"uuid": uuid}).populate('cards').populate('owner').exec()
+        const set = await CardSet.findOne({"uuid": uuid}).populate('owner').populate('cards').exec()
         return {
             "uuid": set.uuid,
             "owner": set.owner.uuid,
             "cards": set.cards,
-            "names": set.names,
+            "name": set.name,
             "public": set.public
         }
-        return set
     }catch(err){
         throw new Error(`Error getting cardset by uuid ${uuid} from DB: \n ${err}`)
     }
@@ -274,4 +277,4 @@ const deleteSet = async (uuid) => {
     }
 }
 
-module.exports = {createCardSet, getCardSets, getAllCardSets, getCardSetsOfUser, getWIPCardSets, getCardSetByUuid, getCardsInSet, getPublicCardSets, getSetCount, updateSet, setExists, addCardsToSet, removeCardsFromSet, isCardinSet, deleteSet}
+module.exports = {createCardSet, getCardSets, getAllCardSets, getCardSetsOfUser, getWIPCardSets, getCardSetByUuid, getCardsInSet, getSetCount, updateSet, setExists, addCardsToSet, removeCardsFromSet, isCardinSet, deleteSet}
