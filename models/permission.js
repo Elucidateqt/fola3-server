@@ -86,7 +86,6 @@ const getPermissionCount = async () => {
 
 const deletePermission = async (uuid) => {
     try{
-        console.log("deleting permission", uuid)
         const result = await Permission.deleteOne({"uuid": uuid})
     }catch(err){
         throw new Error(`Error in modules.permission.deletePermission: \n ${err}`)

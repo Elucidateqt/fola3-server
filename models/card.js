@@ -43,7 +43,6 @@ CardSchema.pre('deleteOne', async function(next) {
         } catch (err) {
         throw new Error(err)
     }
-    console.log("removed card from cardsets")
     // TODO: remove card from all decks
 });
 
@@ -59,6 +58,7 @@ const createCard = async (config) => {
         const card = {
             "_id": result._id,
             "uuid": result.uuid,
+            "cardType": result.cardType,
             "name": result.name,
             "description": result.description,
             "updatedAt": result.updatedAt,
@@ -116,10 +116,7 @@ const getCards = async (options) => {
             matchAggregator,
             {$sort: {[sortBy]: dir}},
             {$skip: offset},
-            {$limit: limit},
-            {$project: {
-                "_id": 0
-            }}
+            {$limit: limit}
         ]).exec()
         return cards
     }catch(err){

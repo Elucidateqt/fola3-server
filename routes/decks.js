@@ -7,7 +7,6 @@ const controller = require('../controllers/decks')
 const { body, param, query } = require('express-validator')
 
 router.post('/my', authMiddleware.authenticateToken,
-body('owner').exists().trim().custom(deckMiddleware.isOwnerParamValid),
 body('public').optional().isBoolean(),
 body("name").optional().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlpha('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
 body('cards.*').optional().isUUID(),
@@ -16,7 +15,7 @@ controller.createBearerDeck)
 router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission('API:DECKS:MANAGE_PUBLIC'),
 body('owner').exists().trim().custom(deckMiddleware.isOwnerParamValid),
 body('public').optional().isBoolean(),
-body("name").optional().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlpha('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
+body("name").optional().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlphanumeric('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
 body('cards.*').optional().isUUID(),
 controller.createDeck)
 
@@ -36,7 +35,7 @@ deckMiddleware.isOwnerOrManager, controller.returnDeck)
 
 router.put('/:deckId', authMiddleware.authenticateToken, 
 param('deckId').trim().isUUID().withMessage('deck.id_invalid'),
-body("name").exists().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlpha('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
+body("name").exists().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlphanumeric('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
 body("owner").isString().trim().isUUID().withMessage('deck.owner_invalid'),
 body("cards.*").isString().trim().isUUID().withMessage('deck.cards_invalid'),
 deckMiddleware.loadDeck,

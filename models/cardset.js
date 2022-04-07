@@ -77,7 +77,6 @@ const getCardSets = async (options) => {
     }
     const sortBy = options.hasOwnProperty('sortBy') ? options.sortBy : 'updatedAt'
     const dir = options.sortDir === 'ASC' ? 1 : -1
-    console.log("matchaggregator", matchAggregator)
     try{
         const sets = await CardSet.aggregate([
             matchAggregator,
@@ -168,7 +167,6 @@ const getCardsInSet = async (uuid, options = {sortBy: 'updatedAt', ascending: fa
                 "_id": 0
             }}
         ])
-        console.log("set loaded", result)
         if(result.length > 0 && result[0].hasOwnProperty("cards")){
             return result[0].cards
         }

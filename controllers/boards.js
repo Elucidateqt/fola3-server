@@ -86,7 +86,6 @@ exports.getBoardsWithUser = async (req, res, next) => {
         //return all boards if no offset or limit specified
         const offset = req.query.offset || 0
         const limit = req.query.limit || 20
-        console.log("getting user boards with params", offset, limit)
         const boardList = await Board.getAllBoardsWithUser(req.locals.user._id, parseInt(limit), parseInt(offset))
         logger.log('info', `Loaded boards with User ${req.locals.user.uuid} from DB.`)
         res.status(200).send({ "message": "boardsLoaded", "boardList": boardList })
@@ -176,7 +175,6 @@ exports.joinWithCode = async (req, res) => {
         return
     }
     if(req.query.inv !== req.locals.board.inviteCode){
-        console.log("invalid code")
         res.status(403).json({ error: 'invite.invalid'})
         return
     }
@@ -185,7 +183,6 @@ exports.joinWithCode = async (req, res) => {
         
         //TODO: require actual deck in request and get cards
         const cards = await Deck.getCardsInDeck(req.body.deckId)
-        console.log("cardResult", cards)
         cards.forEach(card => {
             delete card._id
             //assign new uuid to prevent id-collisions if two players imported the same card into a board
@@ -197,7 +194,6 @@ exports.joinWithCode = async (req, res) => {
             }
 
         })
-        console.log("cards updated", cards)
 
         await Board.addMembersToBoard(req.params.boardId, [{ user: req.locals.user._id, roles: [roles[0]._id], cards: cards }])
         res.sendStatus(204)

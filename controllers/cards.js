@@ -29,6 +29,7 @@ exports.createCard = async (req, res) => {
             "requiredSensors": req.body.requiredSensors || []
         }
         const card = await Card.createCard(config)
+        console.log("created card", card)
         logger.log('info', `User ${req.locals.user.uuid} created card ${card.uuid}`)
         //TODO: refactor reference addition into mongoose-middleware
         const userSets = await CardSet.getCardSetsOfUser(req.locals.user._id)
@@ -85,7 +86,6 @@ exports.updateCard = async (req, res) => {
       return
     }
     try {
-        console.log("req.body", req.body)
         const config = {
             "name": req.body.name || req.locals.card.name,
             "description": req.body.description || req.locals.card.description,
@@ -98,9 +98,7 @@ exports.updateCard = async (req, res) => {
             "LTEsensors": req.body.lteSensors || req.locals.card.LTEsensors,
             "requiredSensors": req.body.requiredSensors || req.locals.card.requiredSensors
         }
-        console.log("config", config)
         const newCard = await Card.updateCard(req.locals.card.uuid, config)
-        console.log("card updated", newCard)
         delete newCard._id
         logger.log('info', `User ${req.locals.user.uuid} updated card ${req.locals.card.uuid}`)
         res.json({"card": newCard})
@@ -159,7 +157,6 @@ exports.getCardsOfBearer = async (req, res) => {
 
 exports.deleteCard = async (req, res) => {
     try{
-        console.log("card", req.locals.card)
         await Card.deleteCard(req.locals.card.uuid)
         res.sendStatus(204)
         logger.log("info", `user ${req.locals.user.uuid} deleted card ${req.locals.card.uuid}`)

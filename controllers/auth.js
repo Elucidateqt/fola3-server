@@ -116,7 +116,7 @@ const refreshAccessToken = async (req, res, next) => {
         }
         jwt.verify(token,process.env.REFRESH_TOKEN_SECRET, async (err, data) => {
             if(err){
-                console.log('error', `Error verifying token in controllers.auth: \n ${err}`)
+                logger.error(`Error verifying token in controllers.auth: \n ${err}`)
                 res.sendStatus(403)
                 return next()
             }

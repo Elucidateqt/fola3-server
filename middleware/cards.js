@@ -7,7 +7,6 @@ const { validationResult } = require('express-validator')
 
 
 exports.loadCard = async (req, res, next) => {
-    console.log("loading card")
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -18,7 +17,6 @@ exports.loadCard = async (req, res, next) => {
             return res.sendStatus(404)
         }
         req.locals.card = card
-        console.log("card loaded")
         next()
     }catch(err){
         logger.log('error', err)
@@ -27,7 +25,6 @@ exports.loadCard = async (req, res, next) => {
 }
 
 exports.isOwnerOrManager = async (req, res, next) => {
-    console.log("checking permissions to manage card")
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });

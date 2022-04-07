@@ -38,24 +38,23 @@ const Deck = mongoose.model(
 
 
 const createDeck = async (uuid, name, cardIds, ownerId) => {
-    console.log(`creating Deck for ${ownerId} \n\n\n\n\n`)
     try{
-        const result = await new CardSet({
+        const result = await new Deck({
             "uuid": uuid,
             "name": name,
             "cards": cardIds,
             "owner": ownerId
         }).save()
-        const set = {
+        const deck = {
             "_id": result._id,
             "uuid": result.uuid,
-            "names": result.names,
-            "cardCount": result.cards.length,
+            "name": result.name,
+            "cards": result.cards,
             "owner": result.ownerId,
             "updatedAt": result.updatedAt,
             "createdAt": result.createdAt
         }
-        return set
+        return deck
     }catch(err){
         logger.error(err)
         throw new Error(`Error while creating deck ${name} in DB: \n ${err}`)
@@ -96,7 +95,7 @@ const getDecks = async (options) => {
 
 const getDeckByUuid = async (uuid) => {
     try {
-        const sets = await Deck.find({"uuid": uuid}).populate('owner').populate('cards').exec()
+        const sets = await Deck.findOne({"uuid": uuid}).populate('owner').populate('cards').exec()
         return sets
     } catch (err) {
         logger.error(err)
@@ -107,7 +106,6 @@ const getDeckByUuid = async (uuid) => {
 const getCardsInDeck = async (uuid) => {
     try{
         const result = await Deck.findOne({"uuid": uuid}).populate("cards").exec()
-        console.log("deck cards loaded", result)
         const dummyResult =
             [{
                 uuid: "e6c69ea8-ffe1-49ed-8e1a-c6cbaf7cfea0",

@@ -49,7 +49,6 @@ const createBoard = async (uuid, name, description, creatorId, creatorRoleIds, c
             "inviteCode": createRandomString(8),
             "members": [{user: creatorId, roles: creatorRoleIds, cards: creatorCards }]
         }).save();
-        console.log("board created", board.members[0].cards)
         return {
             "_id" : board._id,
             "uuid" : board.uuid,

@@ -216,7 +216,6 @@ exports.addCards = async (req, res) => {
     }
     try{
         const cards = await Card.getCards(req.body.cards, "updatedAt", "ASC", 0, req.body.cards.length)
-        console.log("loaded cards from db", cards)
         const newIds = cards.map(card => {
             if(!req.locals.cardset.cards.includes(card._id)){
                 return card._id

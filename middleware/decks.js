@@ -42,7 +42,7 @@ exports.isOwnerOrManager = async (req, res, next) => {
       return res.status(400).json({ errors: errors.array() });
     }
     if (req.locals.deck.public === false) {
-        const notAllowed = req.locals.user._id != req.locals.deck.owner && !req.locals.user.effectivePermissions.includes('API:DECKS:MANAGE')
+        const notAllowed = !req.locals.user._id.equals(req.locals.deck.owner._id) && !req.locals.user.effectivePermissions.includes('API:DECKS:MANAGE')
         if(notAllowed){
             return res.sendStatus(403)
         }

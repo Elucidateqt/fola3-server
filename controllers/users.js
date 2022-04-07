@@ -168,7 +168,6 @@ exports.removeRevokedPermission = async (req, res, next) => {
     try{
         const permissions = await Permission.getPermissionsByUuidList([req.params.permissionId])
         const permissionIds = permissions.map(permission => {return permission._id})
-        console.log("permissionIds", permissionIds)
         await User.removePermissionsFromBlacklist(req.params.userId, permissionIds)
         res.sendStatus(204)
         logger.log("info", `User ${req.locals.user.uuid} removed revoked permissions of user ${req.params.userId}`)
