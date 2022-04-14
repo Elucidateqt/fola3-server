@@ -24,7 +24,7 @@ const signUp = async (req, res, next) => {
         const roleId = await Role.getRoleIdByName("user")
         const user = await User.createUser(uuidv4(), req.body.username, req.body.email, bcrypt.hashSync(req.body.password,10), [roleId])
         //create personal cardset for new users
-        const userCardSet = await db.cardset.createCardSet(uuidv4(), `Cards of ${req.body.username}`, "", [], false, user._id)
+        const userCardSet = await db.cardset.createCardSet(uuidv4(), `${req.body.username}'s Set`, "", false, user._id)
         logger.log("info", `User ${user.username} created successfully!`)
         res.status(204).send({ "message": "userCreated", "user": user})
         next()

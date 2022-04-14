@@ -13,29 +13,28 @@ const PUBLIC_EMAIL = process.env.PUBLIC_ACC_MAIL || 'public@apiTest.com'
 exports.createCard = async (req, res) => {
     
     try{
-        let cardName = req.body.name || "New Card",
-        cardDescription = req.body.description || "New Description"
+        let cardName = req.body.name,
+        cardDescription = req.body.description
+        const userSets = await CardSet.getCardSetsOfUser(req.locals.user._id)
         const config = {
             "uuid": uuidv4(),
+            "cardset": userSets[0]._id,
             "name": cardName,
             "description": cardDescription,
             "cardType": req.body.type,
             "interactionSubjectLeft": req.body.interactionSubjectLeft,
             "interactionSubjectRight": req.body.interactionSubjectRight,
             "interactionDirection": req.body.interactionDirection,
-            "imageUrl": req.body.imageUrl || "https://loremflickr.com/320/240",
-            "knowledbaseUrl": req.body.knowledbaseUrl || "https://knowhow.studiumdigitale.uni-frankfurt.de/",
-            "LTEsensors": req.body.lteSensors || [],
-            "requiredSensors": req.body.requiredSensors || []
+            "imageUrl": req.body.imageUrl,
+            "knowledbaseUrl": req.body.knowledbaseUrl,
+            "LTEsensors": req.body.lteSensors,
+            "requiredSensors": req.body.requiredSensors
         }
         const card = await Card.createCard(config)
-        console.log("created card", card)
         logger.log('info', `User ${req.locals.user.uuid} created card ${card.uuid}`)
-        //TODO: refactor reference addition into mongoose-middleware
-        const userSets = await CardSet.getCardSetsOfUser(req.locals.user._id)
-        CardSet.addCardsToSet(userSets[0].uuid, [card._id])
-        logger.log('info', `Added card ${card.uuid} to set ${userSets[0].uuid}`)
         delete card._id
+        delete card.__v
+        card.cardset = userSets[0].uuid
         res.json({'card': card})
     }catch(err){
         logger.log('error', err)
@@ -49,7 +48,6 @@ exports.getCards = async (req, res) => {
       res.status(400).json({ errors: errors.array() });
       return
     }
-    let cardIds = []
     try {
         const config = {}
         if(req.query.type){
@@ -66,10 +64,17 @@ exports.getCards = async (req, res) => {
         }
         config.limit = parseInt(req.query.limit)
         config.offset = parseInt(req.query.offset)
-        req.locals.cardsets.forEach(set => cardIds = cardIds.concat(set.cards.map(card => card._id)))
-        config.cardIds = cardIds
+
+        const setIds = req.locals.cardsets.map(set => set._id)
+        config.cardsets = setIds
 
         const cards = await Card.getCards(config)
+
+        cards.forEach(card => {
+            delete card._id
+            delete card.__v
+            card.cardset = card.cardset[0].uuid
+        })
         res.json({"cards": cards})
         
     } catch (err) {
@@ -85,21 +90,33 @@ exports.updateCard = async (req, res) => {
       res.status(400).json({ errors: errors.array() });
       return
     }
+    let setId = req.locals.card.cardset
     try {
+        if(req.body.cardset){
+            const set = await CardSet.getCardSetByUuid(req.body.cardset)
+            if(!set){
+                return res.sendStatus(400)
+            }
+            setId = set._id
+        }
         const config = {
             "name": req.body.name || req.locals.card.name,
+            "cardset": setId,
             "description": req.body.description || req.locals.card.description,
-            "cardType": req.body.cardType || req.locals.card.cardType,
+            "cardType": req.body.type || req.locals.card.cardType,
             "interactionSubjectLeft": req.body.interactionSubjectLeft || req.locals.card.interactionSubjectLeft,
             "interactionSubjectRight": req.body.interactionSubjectRight || req.locals.card.interactionSubjectRight,
             "interactionDirection": req.body.interactionDirection || req.locals.card.interactionDirection,
-            "imageUrl": req.body.imageUrl || req.locals.card.imageUrl,
-            "knowledbaseUrl": req.body.knowledbaseUrl || req.locals.card.knowledbaseUrl,
+            "imageUrl": req.body.imageUrl || null,
+            "knowledbaseUrl": req.body.knowledbaseUrl || null,
             "LTEsensors": req.body.lteSensors || req.locals.card.LTEsensors,
             "requiredSensors": req.body.requiredSensors || req.locals.card.requiredSensors
         }
         const newCard = await Card.updateCard(req.locals.card.uuid, config)
+        const cardsets = await CardSet.getCardSets({setIds: [newCard.cardset]})
         delete newCard._id
+        delete newCard.__v
+        newCard.cardset = cardsets[0].uuid
         logger.log('info', `User ${req.locals.user.uuid} updated card ${req.locals.card.uuid}`)
         res.json({"card": newCard})
     } catch (err) {

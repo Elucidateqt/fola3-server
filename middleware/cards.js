@@ -2,7 +2,7 @@ const db = require('../models')
 const Card = db.card
 const CardSet = db.cardset
 const registry = require('../lib/registry')
-const logger = registry.getService('logger').child({ component: 'Board Middleware'})
+const logger = registry.getService('logger').child({ component: 'Card Middleware'})
 const { validationResult } = require('express-validator')
 
 
@@ -34,7 +34,7 @@ exports.isOwnerOrManager = async (req, res, next) => {
     }
     try{
         const bearerSets = await CardSet.getCardSetsOfUser(req.locals.user._id)
-        const isOwnerOfCard = bearerSets.some(set => set.cards.includes(req.locals.card._id))
+        const isOwnerOfCard = bearerSets.some(set => set._id.equals(req.locals.card.cardset))
         if(!isOwnerOfCard){
             return res.sendStatus(403)
         }

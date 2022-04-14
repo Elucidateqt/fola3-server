@@ -38,7 +38,7 @@ exports.checkQueryCardsets = async (setList, { req }) => {
     await Promise.all(sets.map(async (setId) => {
         const cardSet = await CardSet.getCardSetByUuid(setId)
         if(cardSet.public === false){
-            const notAllowed = req.locals.user._id != cardSet.owner && !req.locals.user.effectivePermissions.includes('API:CARDSETS:MANAGE')
+            const notAllowed = cardSet.owner._id.equals(req.locals.user._id.equals) && !req.locals.user.effectivePermissions.includes('API:CARDSETS:MANAGE')
             if(notAllowed){
                 throw new Error("auth.unauthorized")
             }

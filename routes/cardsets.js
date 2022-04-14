@@ -34,24 +34,6 @@ param('setId').trim().isUUID().withMessage('must be valid UUID'),
 cardSetMiddleware.loadCardSet,
 cardSetMiddleware.isOwnerOrManager, controller.updateCardSet)
 
-router.post('/:setId/cards/', authMiddleware.authenticateToken, 
-param('setId').trim().isUUID().withMessage('must be valid UUID'),
-cardSetMiddleware.loadCardSet,
-cardSetMiddleware.isOwnerOrManager, controller.addCards)
-
-router.delete('/:setId/cards/', authMiddleware.authenticateToken, 
-param('setId').trim().isUUID().withMessage('must be valid UUID'),
-cardSetMiddleware.loadCardSet,
-cardSetMiddleware.isOwnerOrManager, controller.removeCards)
-
-router.delete('/:setId/cards/:cardId', authMiddleware.authenticateToken, 
-param('setId').trim().isUUID().withMessage('must be valid UUID'),
-param('cardId').trim().isUUID().withMessage('must be valid UUID'),
-cardSetMiddleware.loadCardSet,
-cardSetMiddleware.isOwnerOrManager, 
-cardMiddleware.loadCard,
-controller.removeCard)
-
 router.delete('/:setId', authMiddleware.authenticateToken, authMiddleware.authenticatePermission('API:CARDSETS:MANAGE'),
 param('setId').trim().isUUID().withMessage('must be valid UUID'),
 controller.deleteCardSet)

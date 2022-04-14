@@ -63,7 +63,7 @@ const createDeck = async (uuid, name, cardIds, ownerId) => {
 
 const getDecks = async (options) => {
     //TODO: test sorting
-    let matchAggregator = options.hasOwnProperty('owner') ? {$match: { "owner": options.ownerId}} : {$match: {}}
+    let matchAggregator = options.hasOwnProperty('ownerId') ? {$match: { "owner": options.ownerId}} : {$match: {}}
     if(options.hasOwnProperty('public')){
         matchAggregator.$match['public'] = options.public
     }

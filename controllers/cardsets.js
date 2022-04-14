@@ -16,8 +16,7 @@ exports.createCardSet = async (req, res) => {
       return
     }
     let setName = req.body.name,
-        owner = null,
-        cardIds = []
+        owner = null
     try{
         if(req.body.owner){
             const user = await User.getUserByUuid(req.body.owner)
@@ -26,19 +25,14 @@ exports.createCardSet = async (req, res) => {
             }
             owner = user._id
         }
-        if(req.body.cards){
-            const cards = await Card.getCards(req.body.cards)
-            cardIds = cards.map(card => {return card._id})
-        }
         const config = {
             "uuid": uuidv4(),
             "name": setName,
             "owner": owner,
             "public": req.body.public || false,
-            "iconUrl": req.body.iconUrl || '',
-            "cards": cardIds
+            "iconUrl": req.body.iconUrl || ''
         }
-        const cardset = await CardSet.createCardSet(config.uuid, config.name, config.iconUrl, config.cards, config.public, config.owner)
+        const cardset = await CardSet.createCardSet(config.uuid, config.name, config.iconUrl, config.public, config.owner)
         delete cardset._id
         logger.log('info', `Cardset with uuid ${cardset.uuid} created by user ${req.locals.user.uuid}`)
         res.status(200).send({ "cardset": cardset})
@@ -85,7 +79,6 @@ exports.getCardSets = async (req, res) => {
         sets.forEach(set => {
             delete set._id
             delete set._v
-            set.cards = set.cards.map(card => card.uuid)
             set.owner = req.params.owner
         })
         res.json({"cardsets": sets})
@@ -105,7 +98,6 @@ exports.getCardSetByUuid = async (req, res) => {
     try{
         const cardset = await CardSet.getCardSetByUuid(req.params.setId)
         delete cardset._id
-        cardset.cardCount = cardset.cards.length
         logger.log('info', `Cardset with uuid ${cardset.uuid} created by user ${req.locals.user.uuid}`)
         res.status(200).send({ "cardset": cardset})
     }catch(err){
@@ -120,23 +112,20 @@ exports.updateCardSet = async (req, res) => {
       res.status(400).json({ errors: errors.array() });
       return
     }
-    let owner = req.locals.cardset.owner,
-        cardIds = req.locals.cardset.cards
+    let owner = req.locals.cardset.owner
     try {
         if(req.body.owner){
             const user = await User.getUserByUuid(req.body.owner)
+            if(!user){
+                res.sendStatus(404)
+            }
             owner = user._id
-        }
-        if(req.body.cards){
-            const cards = await Card.getCards(req.body.cards, "updatedAt", "ASC", 0, req.body.cards.length)
-            cardIds = cards.map(card => {return card._id})
         }
         const config = {
             "name": req.body.name || req.locals.cardset.name,
             "public": req.body.public || req.locals.cardset.public,
             "iconUrl": req.body.iconUrl || req.locals.cardset.iconUrl,
-            "owner": owner,
-            "cards": cardIds
+            "owner": owner
         }
         await CardSet.updateCardSet(req.params.setId, config)
         logger.log('error', `User ${req.locals.user.uuid} updated cardset ${req.params.setId}`)
@@ -195,8 +184,7 @@ exports.getBearerCardSets = async (req, res) => {
                     "uuid": cardset.uuid,
                     "iconURL": cardset.iconUrl,
                     "public": cardset.public,
-                    "owner": req.locals.user.uuid,
-                    "cards": cardset.cards.map(card => card.uuid)
+                    "owner": req.locals.user.uuid
                 })
             }
         })
@@ -205,66 +193,5 @@ exports.getBearerCardSets = async (req, res) => {
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
-    }
-}
-
-exports.addCards = async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return 
-    }
-    try{
-        const cards = await Card.getCards(req.body.cards, "updatedAt", "ASC", 0, req.body.cards.length)
-        const newIds = cards.map(card => {
-            if(!req.locals.cardset.cards.includes(card._id)){
-                return card._id
-            }
-        })
-        await CardSet.addCards(req.params.cardSet, newIds)
-        logger.log('info', `Added ${newIds.length} cards to set ${req.params.setId}`)
-        res.sendStatus(204)
-    }catch(err){
-        logger.log('error', err)
-        res.sendStatus(500)
-        
-    }
-}
-
-exports.removeCard = async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return 
-    }
-    try {
-        await CardSet.removeCards(req.params.boardId, [req.locals.card._id])
-        logger.log('info', `removed card ${req.body.uuid} from cardset ${req.params.setId}`)
-        res.sendStatus(204)
-        
-    } catch (err) {
-        logger.log('error', err)
-        res.sendStatus(500)
-        
-    }
-}
-
-exports.removeCards = async (req, res) => {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return 
-    }
-    try {
-        const cards = await Card.getCards(req.body.cards, "updatedAt", "ASC", 0, req.body.cards.length)
-        const cardIds = cards.map(card => {return card._id})
-        await CardSet.removeCards(req.params.setId, cardIds)
-        logger.log('info', `removed ${cardIds.length} members from cardset ${req.params.setId}`)
-        res.sendStatus(204)
-        
-    } catch (err) {
-        logger.log('error', err)
-        res.sendStatus(500)
-        
     }
 }

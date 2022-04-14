@@ -25,12 +25,7 @@ const CardSetSchema = new mongoose.Schema(
         },
         "iconUrl": {
             type: String
-        },
-        "cards": [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Card",
-            default: []
-        }]
+        }
     },
     { timestamps: true }
 )
@@ -41,14 +36,13 @@ const CardSet = mongoose.model(
 )
 
 
-const createCardSet = async (uuid, name, iconUrl, cardIds, isPublic, ownerId) => {
+const createCardSet = async (uuid, name, iconUrl, isPublic, ownerId) => {
     try{
         const result = await new CardSet({
             "uuid": uuid,
             "name": name,
             "public": isPublic,
             "iconUrl": iconUrl,
-            "cards": cardIds,
             "owner": ownerId
         }).save()
         const set = {
@@ -56,7 +50,6 @@ const createCardSet = async (uuid, name, iconUrl, cardIds, isPublic, ownerId) =>
             "uuid": result.uuid,
             "name": result.name,
             "public": result.public,
-            "cardCount": result.cards.length,
             "iconUrl": result.iconUrl,
             "owner": result.ownerId,
             "updatedAt": result.updatedAt,
@@ -65,7 +58,7 @@ const createCardSet = async (uuid, name, iconUrl, cardIds, isPublic, ownerId) =>
         return set
     }catch(err){
         logger.error(err)
-        throw new Error(`Error while creating cardset ${names.enUS} in DB: \n ${err}`)
+        throw new Error(`Error while creating cardset ${name} in DB: \n ${err}`)
     }
 }
 
@@ -74,6 +67,9 @@ const getCardSets = async (options) => {
     let matchAggregator = options.hasOwnProperty('public') ? {$match: { "public": options.public}} : {$match: {}}
     if(options.hasOwnProperty('owner')){
         matchAggregator.$match['owner'] = options.owner
+    }
+    if(options.hasOwnProperty('setIds')){
+        matchAggregator.$match._id = { $in: options.setIds}
     }
     const sortBy = options.hasOwnProperty('sortBy') ? options.sortBy : 'updatedAt'
     const dir = options.sortDir === 'ASC' ? 1 : -1
@@ -85,12 +81,6 @@ const getCardSets = async (options) => {
                 localField: 'owner',
                 foreignField: '_id',
                 as: 'owner'
-            }},
-            {$lookup: {
-                from: 'cards',
-                localField: 'cards',
-                foreignField: '_id',
-                as: 'cards'
             }},
             {$sort: {[sortBy]: dir}}
         ]).exec()
@@ -138,54 +128,10 @@ const getWIPCardSets = async (publicUserId) => {
     }
 }
 
-const getCardsInSet = async (uuid, options = {sortBy: 'updatedAt', ascending: false, limit: 5, offset: 0}) => {
-    const sortDir = options.ascending === true ? -1 : 1
-    try{
-        const result = await CardSet.aggregate([
-            {$match: {"uuid": uuid}},
-            {$unwind: "$cards"},
-            {$lookup: {
-                from: 'cards',
-                let: {"arr": "$cards"},
-                as: 'cards',
-                pipeline: [
-                    {$match: {
-                        $expr: {
-                            $in: ["$_id", "$$cards"]
-                        }
-                    }},
-                    {$sort: {"options.sortBy": sortDir}},
-                    {$skip: options.offset},
-                    {$limit: options.limit},
-                    {$project: {
-                        "_id": 0
-                    }
-                    }
-                ]
-            }},
-            {$project: {
-                "_id": 0
-            }}
-        ])
-        if(result.length > 0 && result[0].hasOwnProperty("cards")){
-            return result[0].cards
-        }
-        return []
-    }catch(err){
-        throw new Error(`Error while getting Cards of ${rolename} from DB: \n ${err}`)
-    }
-}
-
 const getCardSetByUuid = async (uuid) => {
     try{
-        const set = await CardSet.findOne({"uuid": uuid}).populate('owner').populate('cards').exec()
-        return {
-            "uuid": set.uuid,
-            "owner": set.owner.uuid,
-            "cards": set.cards,
-            "name": set.name,
-            "public": set.public
-        }
+        const set = await CardSet.findOne({"uuid": uuid}).populate('owner').exec()
+        return set
     }catch(err){
         throw new Error(`Error getting cardset by uuid ${uuid} from DB: \n ${err}`)
     }
@@ -193,7 +139,7 @@ const getCardSetByUuid = async (uuid) => {
 
 const getCardSetsOfUser = async (userId) => {
     try{
-        const set = await CardSet.find({"owner": userId}).populate('cards').exec()
+        const set = await CardSet.find({"owner": userId}).exec()
         return set
     }catch(err){
         logger.error(err)
@@ -210,38 +156,6 @@ const getSetCount = async () => {
     }
 }
 
-const addCardsToSet = async(uuid, cardIds) => {
-    try{
-        await CardSet.updateOne({uuid: uuid},
-            {$push: {"cards": {$each: cardIds}}}
-        ).exec()
-    }catch(err){
-        throw new Error(`Error adding cards to set: ${err}`)
-    }
-}
-
-const removeCardsFromSet = async (uuid, cardIds) => {
-    try{
-        await CardSet.updateOne({
-            uuid: uuid
-        },
-        {$pull: {"cards": {$in: cardIds}}})
-        .exec()
-    }catch(err){
-        throw new Error(`Error removing cards from set: ${err}`)
-    }
-}
-
-const isCardinSet = async (uuid, cardId) => {
-    try{
-        const set = await CardSet.findOne({
-            uuid: uuid
-        }).exec()
-        return set.cards.some(card => card._id === cardId)
-    }catch(err){
-        throw new Error(`Error in models.cardset.isCardInSet: \n ${err}`)
-    }
-}
 
 const setExists = async (setName) => {
     try{
@@ -259,8 +173,7 @@ const updateSet = async (uuid, newSet) => {
             "name": newSet.names,
             "public": newSet.isPublic,
             "owner": newSet.owner,
-            "iconUrl": newSet.iconUrl,
-            "cards": newSet.cardIds
+            "iconUrl": newSet.iconUrl
         })
     }catch(err){
         throw new Error(`Error updating cardset with uuid ${uuid} in DB: \n ${err}`)
@@ -275,4 +188,4 @@ const deleteSet = async (uuid) => {
     }
 }
 
-module.exports = {createCardSet, getCardSets, getAllCardSets, getCardSetsOfUser, getWIPCardSets, getCardSetByUuid, getCardsInSet, getSetCount, updateSet, setExists, addCardsToSet, removeCardsFromSet, isCardinSet, deleteSet}
+module.exports = {createCardSet, getCardSets, getAllCardSets, getCardSetsOfUser, getWIPCardSets, getCardSetByUuid, getSetCount, updateSet, setExists, deleteSet}

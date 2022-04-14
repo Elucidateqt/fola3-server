@@ -6,6 +6,11 @@ const CardSchema = new mongoose.Schema(
             type: String,
             required: true
         },
+        "cardset": {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "CardSet",
+            required: true
+        },
         "name": {
             type: String,
             required: true,
@@ -33,9 +38,9 @@ const CardSchema = new mongoose.Schema(
 
 CardSchema.pre('deleteOne', async function(next) {
     const card = await mongoose.models.Card.findOne(this.getQuery())
-    //remove card from all cardsets
+    //remove card from all decks
     try {
-        await mongoose.models.CardSet.updateMany(
+        await mongoose.models.Deck.updateMany(
             { },
             { "$pull": { "cards": card._id } },
             { "multi": true });
@@ -43,7 +48,6 @@ CardSchema.pre('deleteOne', async function(next) {
         } catch (err) {
         throw new Error(err)
     }
-    // TODO: remove card from all decks
 });
 
 const Card = mongoose.model(
@@ -58,6 +62,7 @@ const createCard = async (config) => {
         const card = {
             "_id": result._id,
             "uuid": result.uuid,
+            "cardset": result.cardset,
             "cardType": result.cardType,
             "name": result.name,
             "description": result.description,
@@ -96,6 +101,9 @@ const getCards = async (options) => {
     if(options.hasOwnProperty('cardIds')){
         matchAggregator.$match._id = { $in: options.cardIds}
     }
+    if(options.hasOwnProperty('cardsets')){
+        matchAggregator.$match.cardset = { $in: options.cardsets}
+    }
     if(options.hasOwnProperty('cardUuids')){
         matchAggregator.$match.uuid = { $in: options.cardUuids}
     }
@@ -114,6 +122,12 @@ const getCards = async (options) => {
     try{
         const cards = await Card.aggregate([
             matchAggregator,
+            {$lookup: {
+                from: 'cardsets',
+                localField: 'cardset',
+                foreignField: '_id',
+                as: 'cardset'
+            }},
             {$sort: {[sortBy]: dir}},
             {$skip: offset},
             {$limit: limit}
@@ -127,7 +141,9 @@ const getCards = async (options) => {
 const updateCard = async (uuid, config) => {
     try{
         const result = await Card.findOneAndUpdate({"uuid": uuid},{
+            "cardset": config.cardset,
             "name": config.name,
+            "cardType": config.cardType,
             "description": config.description,
             "interactionSubjectLeft": config.interactionSubjectLeft,
             "interactionSubjectRight": config.interactionSubjectRight,
@@ -136,10 +152,14 @@ const updateCard = async (uuid, config) => {
             "knowledbaseUrl": config.knowledbaseUrl,
             "LTEsensors": config.LTEsensors,
             "requiredSensors": config.requiredSensors
-        }).exec()
+        },
+        {new: true}).exec()
+        console.log("cardupdate result", result)
         const card = {
             "_id": result._id,
             "uuid": result.uuid,
+            "cardType": result.cardType,
+            "cardset": result.cardset,
             "name": result.name,
             "description": result.description,
             "updatedAt": result.updatedAt,
@@ -155,6 +175,21 @@ const updateCard = async (uuid, config) => {
         return card
     }catch(err){
         throw new Error(`Error updating card ${uuid} in DB: \n ${err}`)
+    }
+}
+
+
+const isCardinSet = async (cardId, setId) => {
+    try{
+        const card = await Card.findOne({
+            _id: cardId
+        }).exec()
+        if(card){
+            return card.cardset === setId
+        }
+        return false
+    }catch(err){
+        throw new Error(`Error in models.cardset.isCardInSet: \n ${err}`)
     }
 }
 
@@ -185,4 +220,4 @@ const deleteCard = async (uuid) => {
     }
 }
 
-module.exports = {createCard, getCardByUuid, getCards, getCardCount, cardExists, updateCard, deleteCard}
+module.exports = {createCard, getCardByUuid, getCards, getCardCount, cardExists, updateCard, deleteCard, isCardinSet}
