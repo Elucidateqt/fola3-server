@@ -8,8 +8,6 @@ const { v4: uuidv4 } = require('uuid')
 const logger = registry.getService('logger').child({ component: 'CardController'})
 const { validationResult } = require('express-validator')
 
-const PUBLIC_EMAIL = process.env.PUBLIC_ACC_MAIL || 'public@apiTest.com'
-
 exports.createCard = async (req, res) => {
     
     try{

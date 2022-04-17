@@ -50,6 +50,22 @@ CardSchema.pre('deleteOne', async function(next) {
     }
 });
 
+CardSchema.pre('deleteMany', async function(next) {
+    const cards = await mongoose.models.Card.find(this.getQuery())
+    const idList = cards.map(card => card._id)
+    console.log("deletemany card middleware query", idList)
+    //remove card from all decks
+    try {
+        await mongoose.models.Deck.updateMany(
+            { },
+            { "$pull": { "cards": { $in: idList} } },
+            { "multi": true });
+            next()
+        } catch (err) {
+        throw new Error(err)
+    }
+});
+
 const Card = mongoose.model(
     "Card",
     CardSchema

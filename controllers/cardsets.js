@@ -18,22 +18,29 @@ exports.createCardSet = async (req, res) => {
     let setName = req.body.name,
         owner = null
     try{
-        if(req.body.owner){
-            const user = await User.getUserByUuid(req.body.owner)
-            if(!user){
-                return res.sendStatus(400)
+        if(req.body.owner === 'public'){
+            owner = await User.getUserByEmail(PUBLIC_EMAIL)
+            if(!owner){
+                logger.error('Public user not found in DB')
+                return res.sendStatus(500)
             }
-            owner = user._id
+        }else{
+            owner = await User.getUserByUuid(req.body.owner)
+            if(!owner){
+                return res.sendStatus(404)
+            }
         }
         const config = {
             "uuid": uuidv4(),
             "name": setName,
-            "owner": owner,
+            "owner": owner._id,
             "public": req.body.public || false,
-            "iconUrl": req.body.iconUrl || ''
+            "iconUrl": req.body.iconUrl
         }
         const cardset = await CardSet.createCardSet(config.uuid, config.name, config.iconUrl, config.public, config.owner)
         delete cardset._id
+        delete cardset.__v
+        cardset.owner = req.body.owner
         logger.log('info', `Cardset with uuid ${cardset.uuid} created by user ${req.locals.user.uuid}`)
         res.status(200).send({ "cardset": cardset})
     }catch(err){
@@ -78,8 +85,8 @@ exports.getCardSets = async (req, res) => {
         const sets = await CardSet.getCardSets(config)
         sets.forEach(set => {
             delete set._id
-            delete set._v
-            set.owner = req.params.owner
+            delete set.__v
+            set.owner = req.query.owner
         })
         res.json({"cardsets": sets})
     } catch (err) {
@@ -112,24 +119,35 @@ exports.updateCardSet = async (req, res) => {
       res.status(400).json({ errors: errors.array() });
       return
     }
-    let owner = req.locals.cardset.owner
+    let setOwner = req.locals.cardset.owner,
+    isPublic = req.locals.cardset.public
     try {
         if(req.body.owner){
-            const user = await User.getUserByUuid(req.body.owner)
-            if(!user){
-                res.sendStatus(404)
+            if(req.body.owner === 'public'){
+                setOwner = User.getUserByEmail(PUBLIC_EMAIL)
+            }else{
+                setOwner = await User.getUserByUuid(req.body.owner)
+                if(!setOwner){
+                    res.sendStatus(404)
+                }
             }
-            owner = user._id
+        }
+        if(req.body.public !== undefined){
+            isPublic = req.body.public
         }
         const config = {
             "name": req.body.name || req.locals.cardset.name,
-            "public": req.body.public || req.locals.cardset.public,
-            "iconUrl": req.body.iconUrl || req.locals.cardset.iconUrl,
-            "owner": owner
+            "public": isPublic,
+            "iconUrl": req.body.iconUrl || null,
+            "owner": setOwner._id
         }
-        await CardSet.updateCardSet(req.params.setId, config)
+        const cardset = await CardSet.updateSet(req.params.setId, config)
+        delete cardset._id
+        delete cardset.__v
+        cardset.owner = setOwner.email === PUBLIC_EMAIL ? 'public' : setOwner.uuid
+        console.log("updated set", cardset)
         logger.log('error', `User ${req.locals.user.uuid} updated cardset ${req.params.setId}`)
-        res.sendStatus(200)
+        res.json({"cardset": cardset})
     } catch (err) {
         logger.log('error', err)
         res.sendStatus(500)

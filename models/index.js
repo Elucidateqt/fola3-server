@@ -103,7 +103,7 @@ db.initialize = async () => {
                 roleIds.push(roleId)
             }
             const superadmin = await db.user.createUser(uuidv4(), SUPER_ADMIN_NAME, SUPER_ADMIN_EMAIL, bcrypt.hashSync(SUPER_ADMIN_PW,10), roleIds)
-            const adminCardSet = await db.cardset.createCardSet(uuidv4(),"my cards", "", [], false, superadmin._id)
+            const adminCardSet = await db.cardset.createCardSet(uuidv4(),"my cards", null, false, superadmin._id)
             logger.log("info", "Super User created successfully")
         }
         //create user to hold public content
@@ -118,7 +118,7 @@ db.initialize = async () => {
         const baseSetExists = await db.cardset.setExists("Basic Set")
         if(!baseSetExists){
             logger.log('info',"Basic cardset not found. Creating cardset...")
-            const baseSet = await db.cardset.createCardSet(uuidv4(), "Basic Set", null, [], false, publicUser._id)
+            const baseSet = await db.cardset.createCardSet(uuidv4(), "Basic Set", null, false, publicUser._id)
             logger.log("info","Basic cardset created successfully")
         }
 

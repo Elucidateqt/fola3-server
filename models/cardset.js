@@ -30,6 +30,19 @@ const CardSetSchema = new mongoose.Schema(
     { timestamps: true }
 )
 
+CardSetSchema.pre('deleteOne', async function(next) {
+    const set = await mongoose.models.CardSet.findOne(this.getQuery())
+    //remove card from all decks
+    try {
+        await mongoose.models.Card.deleteMany(
+            { "cardset": set._id},
+            { "multi": true });
+            next()
+        } catch (err) {
+        throw new Error(err)
+    }
+});
+
 const CardSet = mongoose.model(
     "CardSet",
     CardSetSchema
@@ -102,7 +115,7 @@ const getAllCardSets = async () => {
     }
 }
 
-getPublicCardSetsOfUser = async (userId) => {
+const getPublicCardSetsOfUser = async (userId) => {
     try {
         const sets  = await CardSet.aggregate([
             {$match: {'public': false, 'owner': userId} },
@@ -168,13 +181,24 @@ const setExists = async (setName) => {
 
 const updateSet = async (uuid, newSet) => {
     try{
-        await CardSet.updateOne({"uuid": uuid},{
-            "uuid": newSet.uuid,
-            "name": newSet.names,
-            "public": newSet.isPublic,
+        const result = await CardSet.findOneAndUpdate({"uuid": uuid},{
+            "name": newSet.name,
+            "public": newSet.public,
             "owner": newSet.owner,
             "iconUrl": newSet.iconUrl
-        })
+        },
+        {new: true})
+        const set = {
+            "_id": result._id,
+            "uuid": result.uuid,
+            "name": result.name,
+            "public": result.public,
+            "iconUrl": result.iconUrl,
+            "owner": result.ownerId,
+            "updatedAt": result.updatedAt,
+            "createdAt": result.createdAt
+        }
+        return set
     }catch(err){
         throw new Error(`Error updating cardset with uuid ${uuid} in DB: \n ${err}`)
     }
