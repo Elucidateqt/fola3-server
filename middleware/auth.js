@@ -31,7 +31,7 @@ exports.authenticateToken = (req, res, next) => {
         }
         req.locals.user = user
         req.locals.user.useragent = req.get('user-agent')
-        req.locals.user.effectivePermissions = user.permissions.filter(permission => !user.revokedPermissions.includes(permission))
+        req.locals.user.effectivePermissions = user.permissions.filter(permission => !user.revokedPermissions.some(revokedPermission => revokedPermission._id === permission._id))
         next()
       }
       catch (err) {
@@ -41,24 +41,20 @@ exports.authenticateToken = (req, res, next) => {
     })
 }
 
-exports.authenticatePermission = (permission) => {
+exports.authenticatePermission = (permissionName) => {
   return (req,res,next) => {
     if(!req.locals.user){
       logger.log("error", `No user found while authenticating permission`)
       return res.sendStatus(500)
     }
-    let userPermissions = req.locals.user.permissions
-    if(!req.locals.user.roles.includes("super admin")){
-      userPermissions = req.locals.user.permissions.filter(permission => !req.locals.user.revokedPermissions.includes(permission))
-    }
-    if(!userPermissions.includes(permission)){
+    if(!req.locals.user.effectivePermissions.some(permission => permission.name === permissionName)){
       return res.sendStatus(401)
     }
     next()
   }
 }
 
-exports.authenticateBoardPermission = (permission) => {
+exports.authenticateBoardPermission = (permissionName) => {
   return async (req, res, next) => {
     const globalPermissions = req.locals.user.permissions
     let boardPermissions = []
@@ -66,13 +62,7 @@ exports.authenticateBoardPermission = (permission) => {
     await Promise.all(boardRoles.map(async (rolename) => {
       boardPermissions = boardPermissions.concat(await Role.getRolePermissions(rolename))
     }))
-    let userPermissions = globalPermissions.concat(boardPermissions)
-    if(!req.locals.user.roles.includes("super admin")){
-      userPermissions = userPermissions.filter(permission => 
-        !req.locals.user.revokedPermissions.includes(permission)
-      )
-    }
-    if(userPermissions.includes(permission)){
+    if(!req.locals.user.effectivePermissions.some(permission => permission.name === permissionName)){
       return res.sendStatus(401)
     }
     next()
@@ -83,7 +73,7 @@ exports.userHasAllRoles = async (roleIds, { req }) => {
   const roles = await Role.getRolesByUuidList(roleIds)
   req.targetRoles = roles
   const roleNames = roles.map(role => {return role.name})
-  const hasAllRoles = roleNames.every(role => req.locals.user.roles.includes(role))
+  const hasAllRoles = roleNames.every(roleName => req.locals.user.roles.some(role => role.name === roleName))
   if(!hasAllRoles){
     throw new Error(`You can't set roles you don't have.`)
   }
@@ -91,10 +81,7 @@ exports.userHasAllRoles = async (roleIds, { req }) => {
 }
 
 exports.userHasAllPermissions = async (permissions, { req }) => {
-  const perms = await Permission.getPermissionsByUuidList(permissions)
-  req.targetPermissions = perms
-  const permNames = [...new Set(perms.map(permission => {return permission.name}))]
-  const hasAllPermissions = permNames.every(permission => req.locals.user.permissions.includes(permission))
+  const hasAllPermissions = permissions.every(permissionName => req.locals.user.effectivePermissions.some(permission => permission.name === permissionName))
   if(!hasAllPermissions){
     throw new Error(`You can't set Permissions you don't have.`)
   }

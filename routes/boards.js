@@ -6,7 +6,7 @@ const boardMiddleware = middleware.board
 const controller = require('../controllers/boards')
 const { body, param, query } = require('express-validator')
 
-router.get('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission('BOARDS:VIEW'), controller.getAllBoards)
+router.get('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission('API:BOARDS:VIEW'), controller.getAllBoards)
 
 router.get('/my', authMiddleware.authenticateToken,
 query('limit').optional().isNumeric(),
@@ -15,7 +15,7 @@ controller.getBoardsWithUser)
 
 router.get('/:boardId', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), boardMiddleware.loadBoard, boardMiddleware.canViewBoard, controller.returnBoard)
 
-router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission("BOARD:CREATE"),
+router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission("API:BOARD:CREATE"),
 body('name').exists().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlpha('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
 body('description').exists().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').isAlpha('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
 controller.createBoard)

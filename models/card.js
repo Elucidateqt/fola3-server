@@ -53,7 +53,6 @@ CardSchema.pre('deleteOne', async function(next) {
 CardSchema.pre('deleteMany', async function(next) {
     const cards = await mongoose.models.Card.find(this.getQuery())
     const idList = cards.map(card => card._id)
-    console.log("deletemany card middleware query", idList)
     //remove card from all decks
     try {
         await mongoose.models.Deck.updateMany(
@@ -170,7 +169,6 @@ const updateCard = async (uuid, config) => {
             "requiredSensors": config.requiredSensors
         },
         {new: true}).exec()
-        console.log("cardupdate result", result)
         const card = {
             "_id": result._id,
             "uuid": result.uuid,

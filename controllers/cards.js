@@ -9,7 +9,11 @@ const logger = registry.getService('logger').child({ component: 'CardController'
 const { validationResult } = require('express-validator')
 
 exports.createCard = async (req, res) => {
-    
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return
+    }
     try{
         let cardName = req.body.name,
         cardDescription = req.body.description
@@ -145,7 +149,7 @@ exports.getCardsOfBearer = async (req, res) => {
         const publicCardSets = await CardSet.getPublicCardSets()
         container = container.concat(publicCardSets)
 
-        if(req.locals.user.effectivePermissions.includes('API:CARDSETS:MANAGE')){
+        if(req.locals.user.effectivePermissions.some(permission => permission.name === 'API:CARDSETS:MANAGE')){
             const wipCardSets = await CardSet.getWIPCardSets()
             container = container.concat(wipCardSets)
         }

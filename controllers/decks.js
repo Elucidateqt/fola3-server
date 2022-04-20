@@ -109,7 +109,7 @@ exports.getDecks = async (req, res) => {
         ownerId = owner._id
         if(public === false){
             const bearerIsOwner = ownerId !== null && ownerId.equals(req.locals.user._id)
-            if(!bearerIsOwner && !req.locals.user.effectivePermissions.includes('API:DECKS:MANAGE')){
+            if(!bearerIsOwner && !req.locals.user.effectivePermissions.some(permission => permission.name === 'API:DECKS:MANAGE')){
                 return res.sendStatus(403)
             }
         }

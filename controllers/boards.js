@@ -281,7 +281,7 @@ exports.leaveBoard = async (req, res, next) => {
             return 
         }
         //reject if the board would be left without any admins
-        if(board.members.filter(user => user.boardroles.includes('boardAdmin') && user.uuid != req.locals.user.uuid).length === 0){
+        if(board.members.filter(user => user.boardroles.some(role => role.name === 'boardAdmin') && user.uuid != req.locals.user.uuid).length === 0){
             logger.log('warn', `User ${req.locals.user.uuid} not permitted to leave. Last admin left`)
             return res.status(405).send({ "message": "lastAdminLeft" })
         }

@@ -29,7 +29,7 @@ exports.isOwnerOrManager = async (req, res, next) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    if(req.locals.user.effectivePermissions.includes('API:CARDS:MANAGE')){
+    if(req.locals.user.effectivePermissions.some(permission => permission.name === 'API:CARDS:MANAGE')){
         return next()
     }
     try{

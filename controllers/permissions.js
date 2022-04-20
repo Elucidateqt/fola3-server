@@ -47,8 +47,13 @@ exports.deletePermission = async (req, res, next) => {
 
 exports.getUserPermissions = async (req, res, next) => {
     try {
-        const permissions = await User.getUserPermissions(req.locals.user.uuid)
-        res.json({"permissions": permissions})
+        const cleanedPermissions = req.locals.user.effectivePermissions.map(permission => {
+            return {
+                "name": permission.name,
+                "uuid": permission.uuid
+            }
+        })
+        res.json({"permissions": cleanedPermissions})
         next()
     } catch (err) {
         logger.log('error', err)

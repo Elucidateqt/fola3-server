@@ -74,7 +74,7 @@ exports.getCardSets = async (req, res) => {
         ownerId = owner._id
         if(public === false){
             const bearerIsOwner = ownerId !== null && ownerId.equals(req.locals.user._id)
-            if(!bearerIsOwner && !req.locals.user.effectivePermissions.includes('API:CARDSETS:MANAGE')){
+            if(!bearerIsOwner && !req.locals.user.effectivePermissions.some(permission => permission.name === 'API:CARDSETS:MANAGE')){
                 return res.sendStatus(403)
             }
         }
@@ -145,7 +145,6 @@ exports.updateCardSet = async (req, res) => {
         delete cardset._id
         delete cardset.__v
         cardset.owner = setOwner.email === PUBLIC_EMAIL ? 'public' : setOwner.uuid
-        console.log("updated set", cardset)
         logger.log('error', `User ${req.locals.user.uuid} updated cardset ${req.params.setId}`)
         res.json({"cardset": cardset})
     } catch (err) {

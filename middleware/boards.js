@@ -37,7 +37,7 @@ exports.isUserBoardMember = async (req, res, next) => {
 
 exports.canViewBoard = async (req, res, next) => {
     try{
-        if(req.locals.board.members.some(member => member.uuid === req.locals.user.uuid) || req.locals.user.permissions.includes('BOARDS:VIEW')){
+        if(req.locals.board.members.some(member => member.uuid === req.locals.user.uuid) || req.locals.user.effectivePermissions.some(permission => permission.name === 'BOARDS:VIEW')){
             return next()
         }
         return res.sendStatus(403)

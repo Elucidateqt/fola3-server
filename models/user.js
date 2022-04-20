@@ -114,8 +114,8 @@ const getUserByUuid = async (uuid) => {
                 "username": {$first: "$username"},
                 "email": { $first: "$email" },
                 "password": {$first: "$password"},
-                "roles": { $push:  "$role.name" },
-                "permissions": {$push: "$role.permission.name"},
+                "roles": { $push:  { _id: "$role._id", name: "$role.name", uuid: "$role.uuid" }},
+                "permissions": {$push: "$role.permission"},
                 "revokedPermissions": { $first: "$revokedPermissions"},
                 "createdAt": { $first: "$createdAt"},
                 "updatedAt": { $first: "$updatedAt"}
@@ -138,10 +138,8 @@ const getUserByUuid = async (uuid) => {
                         }
                     }},
                     {$project: {
-                        "_id": 0,
-                        "name": "$name"
-                    }
-                    }
+                        "_id": 1
+                    }}
                 ]
             }},
     ]).exec()
@@ -149,9 +147,22 @@ const getUserByUuid = async (uuid) => {
             return null
         }
         const user = res[0]
-        user.roles = [...new Set(user.roles)]
-        user.permissions = [...new Set(user.permissions)]
-        user.revokedPermissions = user.revokedPermissions.map(permission => {return permission.name})
+        let roles = [],
+        permissions = []
+        //remove any duplicates
+        user.roles.forEach(newRole => {
+            if(!roles.some(role => role.uuid === newRole.uuid)){
+                roles.push({"_id": newRole._id, "name": newRole.name, "uuid": newRole.uuid})
+            }
+        })
+        user.permissions.forEach(newPermission => {
+            if(!permissions.some(permission => permission.uuid === newPermission.uuid)){
+                permissions.push({"_id": newPermission._id, "name": newPermission.name, "uuid": newPermission.uuid})
+            }
+        })
+        user.revokedPermissions = user.revokedPermissions.map(permission => {return { "_id": permission._id, "name": permission.name, "uuid": permission.uuid }})
+        user.roles = roles
+        user.permissions = permissions
         return user
     }catch(err){
         throw new Error(`Error loading User with UUID ${uuid} from DB: ${err}`)
@@ -306,9 +317,11 @@ const updateUserPassword = async (uuid, passHash) => {
 
 const updateUserRoles = async (uuid, roleIds) => {
     try{
-        await User.findOneAndUpdate({"uuid": uuid},{
+        const res = await User.findOneAndUpdate({"uuid": uuid},{
             "roles": roleIds
-        })
+        },
+        {new: true}).populate('roles').exec()
+        return res.roles
     }catch(err){
         throw new Error(`Error in models.user.updateUserRoles: \n ${err}`)
     }
@@ -427,7 +440,7 @@ const getUsersWithRole = async (rolename) => {
 const getUserPermissions = async (uuid) => {
     try {
         const user = await getUserByUuid(uuid)
-        const permissions = user.permissions.filter(permission => !user.revokedPermissions.includes(permission))
+        const permissions = user.permissions.filter(permission => !user.revokedPermissions.some(revokedPermission => revokedPermission._id.equals(permission._id)))
         return permissions
     } catch (err) {
         throw new Error(`Error loading permissions for user ${uuid} from DB: \n ${err}`)

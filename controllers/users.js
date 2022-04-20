@@ -36,19 +36,32 @@ exports.getUser = async (req, res, next) => {
       return 
     }
     try{
-        const requestUserPermissions = req.locals.user.permissions.filter(permission => !req.locals.user.revokedPermissions.includes(permission))
         let user = await User.getUserByUuid(req.params.userId)
-        //remove data based on requester
-        delete user._id
-        delete user.password
-        user.permissions = user.permissions.filter(permission => !user.revokedPermissions.includes(permission))
-        delete user.revokedPermissions
-        //TODO: test this
-        if(user.uuid !== req.locals.user.uuid && !requestUserPermissions.includes('USERS:MANAGE')){
-            delete user.permissions
-            delete user.email
-            delete user.roles
+        if(!user){
+            res.sendStatus(404)
         }
+        //remove data based on requester
+        delete user.password
+        user.permissions = user.permissions.filter(permission => !user.revokedPermissions.some(revokedPermission => revokedPermission._id.equals(permission._id)))
+        user.roles = user.roles.map(role => {
+            return {
+                "name": role.name,
+                "uuid": role.uuid
+            }
+        })
+        if(!user._id.equals(req.locals.user._id)){
+            if(!req.locals.user.effectivePermissions.some(permission => permission.name === 'API:USERS:ROLES:UPDATE')){
+                delete user.roles
+            }
+            if(!req.locals.user.effectivePermissions.some(permission => permission.name === 'API:USERS:PERMISSIONBLACKLIST:MANAGE')){
+                delete user.revokedPermissions
+            }
+            if(user.uuid !== req.locals.user.uuid && !req.locals.user.effectivePermissions.some(permission => permission.name === 'API:USERS:EMAIL:VIEW')){
+                delete user.email
+            }
+        }
+        delete user.permissions
+        delete user._id
         res.status(200).send({"user": user})
         logger.log("info", `Retrieved User ${req.params.userId} for user ${req.locals.user.uuid}`)
     }catch(err){
@@ -70,13 +83,21 @@ exports.getAllUsers = async (req, res) => {
     }
 }
 
-exports.getTokenBearer = async (req, res, next) => {
+exports.getTokenBearer = async (req, res) => {
     try {
         let user = await User.getUserByUuid(req.locals.user.uuid)
         delete user._id
         delete user.password
-        user.permissions = user.permissions.filter(permission => !user.revokedPermissions.includes(permission))
-        delete user.revokedPermissions
+        user.roles = user.roles.map(role => {
+            return {"name": role.name, "uuid": role.uuid}
+        })
+        user.permissions = user.permissions.filter(permission => !user.revokedPermissions.some(revokedPermission => revokedPermission._id.equals(permission._id)))
+        user.permissions = user.permissions.map(permission => {
+            return {"name": permission.name, "uuid": permission.uuid}
+        })
+        user.revokedPermissions = user.revokedPermissions.map(permission => {
+            return {"name": permission.name, "uuid": permission.uuid}
+        })
         res.json({ "user": user })
     } catch (err) {
         logger.log("error", err)
@@ -109,9 +130,16 @@ exports.updateUserRoles = async (req, res, next) => {
       return 
     }
     try{
-        let roleIds = req.targetRoles.map(role => {return role._id})
-        await User.updateUserRoles(req.params.userId, roleIds)
-        res.sendStatus(204)
+        const roles = await Role.getRolesByUuidList(req.body.roles)
+        let roleIds = roles.map(role => role._id)
+        const updatedRoles = await User.updateUserRoles(req.params.userId, roleIds)
+        const cleanedRoles = updatedRoles.map(role => {
+            return {
+                "name": role.name,
+                "uuid": role.uuid
+            }
+        })
+        res.json({"roles": cleanedRoles})
         logger.log("info", `User ${req.locals.user.uuid} updated roles of user ${req.params.userId}`)
         
     }catch(err){

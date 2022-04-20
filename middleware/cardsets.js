@@ -1,7 +1,7 @@
 const db = require('../models')
 const CardSet = db.cardset
 const registry = require('../lib/registry')
-const logger = registry.getService('logger').child({ component: 'Board Middleware'})
+const logger = registry.getService('logger').child({ component: 'Cardset Middleware'})
 const { validationResult,  } = require('express-validator')
 
 const UUIDexp = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -38,7 +38,7 @@ exports.checkQueryCardsets = async (setList, { req }) => {
     await Promise.all(sets.map(async (setId) => {
         const cardSet = await CardSet.getCardSetByUuid(setId)
         if(cardSet.public === false){
-            const notAllowed = cardSet.owner._id.equals(req.locals.user._id.equals) && !req.locals.user.effectivePermissions.includes('API:CARDSETS:MANAGE')
+            const notAllowed = cardSet.owner._id.equals(req.locals.user._id.equals) && !req.locals.user.effectivePermissions.some(permission => permission.name === 'API:CARDSETS:MANAGE')
             if(notAllowed){
                 throw new Error("auth.unauthorized")
             }
@@ -65,7 +65,7 @@ exports.isOwnerOrManager = async (req, res, next) => {
       return res.status(400).json({ errors: errors.array() });
     }
     if (req.locals.cardset.public === false) {
-        const notAllowed = req.locals.user._id != req.locals.cardset.owner && !req.locals.user.effectivePermissions.includes('API:CARDSETS:MANAGE')
+        const notAllowed = req.locals.user._id != req.locals.cardset.owner && !req.locals.user.effectivePermissions.some(permission => permission.name === 'API:CARDSETS:MANAGE')
         if(notAllowed){
             return res.sendStatus(403)
         }
