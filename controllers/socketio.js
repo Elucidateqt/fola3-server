@@ -605,7 +605,7 @@ const initializeListeners = () => {
 
                 //load deck and validate ownership
                 const deck = await loadUserDeck(user, data.deckId)
-
+                
                 //create copies of cards for board
                 let newCards = []
                 deck.cards.forEach(card => {
@@ -624,7 +624,7 @@ const initializeListeners = () => {
                     })
                 })
                 board.cards = board.cards.concat(newCards)
-                await Board.updateBoardCards(board._id, board.cards.concat(newCards))
+                await Board.updateBoardCards(board._id, board.cards)
                 Board.updateMemberCards(board.members[userIndex]._id, board.members[userIndex].cards.concat(newCards.map(card => card.uuid)))
                 io.to(board.uuid).emit('cardsCreated', {"newCards": newCards, "location": { container: 'hand', playerId: user.uuid }})
             } catch (err) {
