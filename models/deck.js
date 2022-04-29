@@ -62,7 +62,6 @@ const createDeck = async (uuid, name, cardIds, ownerId) => {
 }
 
 const getDecks = async (options) => {
-    //TODO: test sorting
     let matchAggregator = options.hasOwnProperty('ownerId') ? {$match: { "owner": options.ownerId}} : {$match: {}}
     if(options.hasOwnProperty('public')){
         matchAggregator.$match['public'] = options.public
@@ -95,70 +94,13 @@ const getDecks = async (options) => {
 
 const getDeckByUuid = async (uuid) => {
     try {
-        const sets = await Deck.findOne({"uuid": uuid}).populate('owner').populate('cards').exec()
-        return sets
+        const deck = await Deck.findOne({"uuid": uuid}).populate('owner').populate('cards').exec()
+        return deck
     } catch (err) {
         logger.error(err)
-        throw new Error(`Error loading all sets from DB: \n ${err}`)
+        throw new Error(`Error loading deck from DB: \n ${err}`)
     }
 }
-
-const getCardsInDeck = async (uuid) => {
-    try{
-        const result = await Deck.findOne({"uuid": uuid}).populate("cards").exec()
-        const dummyResult =
-            [{
-                uuid: "e6c69ea8-ffe1-49ed-8e1a-c6cbaf7cfea0",
-                name: "Greeting",
-                description: "The teacher greets the students in Zoom",
-                cardType: "interaction",
-                interactionSubjectLeft: "teacher",
-                interactionSubjectRight: "student",
-                interactionDirection: "both",
-                imageUrl: "https://loremflickr.com/320/240",
-                knowledbaseUrl: "https://knowhow.studiumdigitale.uni-frankfurt.de/",
-                LTEsensors: [],
-                requiredSensors: [],
-                createdAt: "2022-03-10T14:14:19.733Z",
-                updatedAt: "2022-03-10T14:14:19.733Z",
-                },
-                {
-                uuid: "e6c69ea8-ffe1-49ed-8e1a-c6cbaf7cfea0",
-                name: "Moodle",
-                description: "The moodle instance of studiumdigitale",
-                cardType: "LET",
-                interactionSubjectLeft: "teacher",
-                interactionSubjectRight: "student",
-                interactionDirection: "both",
-                imageUrl: "https://loremflickr.com/320/240",
-                knowledbaseUrl: "https://knowhow.studiumdigitale.uni-frankfurt.de/",
-                LTEsensors: [],
-                requiredSensors: [],
-                createdAt: "2022-03-10T14:14:19.733Z",
-                updatedAt: "2022-03-10T14:14:19.733Z",
-                },
-                {
-                uuid: "e6c69ea8-ffe1-49ed-8e1a-c6cbaf7cfea0",
-                name: "Initiative",
-                description: "Students regularly participate in discussions",
-                cardType: "what",
-                interactionSubjectLeft: "teacher",
-                interactionSubjectRight: "student",
-                interactionDirection: "both",
-                imageUrl: "https://loremflickr.com/320/240",
-                knowledbaseUrl: "https://knowhow.studiumdigitale.uni-frankfurt.de/",
-                LTEsensors: [],
-                requiredSensors: [],
-                createdAt: "2022-03-10T14:14:19.733Z",
-                updatedAt: "2022-03-10T14:14:19.733Z",
-                }
-              ]
-        return dummyResult
-    }catch(err){
-        throw new Error(`Error while getting Cards of Deck ${uuid} from DB: \n ${err}`)
-    }
-}
-
 
 const getDeckCount = async () => {
     try {
@@ -200,4 +142,4 @@ const deleteDeck = async (id) => {
     }
 }
 
-module.exports = {createDeck, getDecks, getDeckByUuid, updateDeck, getCardsInDeck, getDeckCount, deckExists, deleteDeck}
+module.exports = {createDeck, getDecks, getDeckByUuid, updateDeck, getDeckCount, deckExists, deleteDeck}

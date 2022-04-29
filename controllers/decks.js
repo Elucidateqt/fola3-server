@@ -162,12 +162,9 @@ exports.getBearerDecks = async (req, res) => {
         decks.forEach(deck => {
             delete deck._id
             delete deck._v
-            deck.cards = deck.cards.map(card => {
-                return {
-                    "uuid": card.uuid,
-                    "name": card.name,
-                    "cardType": card.cardType
-                }
+            deck.cards.forEach(card => {
+                delete card._id
+                delete card.__v
             })
             deck.owner = req.locals.user.uuid
         })
@@ -187,7 +184,10 @@ exports.getDeckByUuid = async (req, res) => {
     try{
         const deck = await Deck.getDeckByUuid(req.params.deckId)
         delete deck._id
-        deck.cards = deck.cards.map()
+        deck.cards.forEach(card => {
+            delete card._id
+            delete card.__v
+        })
         logger.log('info', `Deck with uuid ${deck.uuid} loaded for user ${req.locals.user.uuid}`)
         res.status(200).send({ "deck": deck})
     }catch(err){

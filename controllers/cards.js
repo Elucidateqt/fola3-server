@@ -28,7 +28,7 @@ exports.createCard = async (req, res) => {
             "interactionSubjectRight": req.body.interactionSubjectRight,
             "interactionDirection": req.body.interactionDirection,
             "imageUrl": req.body.imageUrl,
-            "knowledbaseUrl": req.body.knowledbaseUrl,
+            "externalLink": req.body.externalLink,
             "LTEsensors": req.body.lteSensors,
             "requiredSensors": req.body.requiredSensors
         }
@@ -92,7 +92,7 @@ exports.updateCard = async (req, res) => {
       res.status(400).json({ errors: errors.array() });
       return
     }
-    let setId = req.locals.card.cardset
+    let setId = req.locals.card.cardset._id
     try {
         if(req.body.cardset){
             const set = await CardSet.getCardSetByUuid(req.body.cardset)
@@ -106,11 +106,12 @@ exports.updateCard = async (req, res) => {
             "cardset": setId,
             "description": req.body.description || req.locals.card.description,
             "cardType": req.body.type || req.locals.card.cardType,
+            "cardset": setId,
             "interactionSubjectLeft": req.body.interactionSubjectLeft || req.locals.card.interactionSubjectLeft,
             "interactionSubjectRight": req.body.interactionSubjectRight || req.locals.card.interactionSubjectRight,
             "interactionDirection": req.body.interactionDirection || req.locals.card.interactionDirection,
             "imageUrl": req.body.imageUrl || null,
-            "knowledbaseUrl": req.body.knowledbaseUrl || null,
+            "externalLink": req.body.externalLink || null,
             "LTEsensors": req.body.lteSensors || req.locals.card.LTEsensors,
             "requiredSensors": req.body.requiredSensors || req.locals.card.requiredSensors
         }
@@ -134,8 +135,10 @@ exports.getCard = async (req, res) => {
       return
     }
     delete req.locals.card._id
+    delete req.locals.card.__v
+    req.locals.card.cardset = req.locals.card.cardset[0].uuid
     logger.log('info', `Loaded card ${req.locals.card.uuid} for user ${req.locals.user.uuid}`)
-    res.json("card", req.locals.card)
+    res.json({"card": req.locals.card})
 }
 
 exports.getCardsOfBearer = async (req, res) => {

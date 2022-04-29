@@ -12,11 +12,11 @@ exports.loadCard = async (req, res, next) => {
       return res.status(400).json({ errors: errors.array() });
     }
     try{
-        const card = await Card.getCardByUuid(req.params.cardId)
-        if(!card){
+        const result = await Card.getCards({cardUuids: [req.params.cardId]})
+        if(result.length === 0){
             return res.sendStatus(404)
         }
-        req.locals.card = card
+        req.locals.card = result[0]
         next()
     }catch(err){
         logger.log('error', err)

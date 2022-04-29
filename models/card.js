@@ -29,7 +29,7 @@ const CardSchema = new mongoose.Schema(
         "interactionSubjectRight": String,
         "interactionDirection": String,
         "imageUrl": String,
-        "knowledbaseUrl": String,
+        "externalLink": String,
         "LTEsensors": [String],
         "requiredSensors": [String]
     },
@@ -87,7 +87,7 @@ const createCard = async (config) => {
             "interactionSubjectRight": result.interactionSubjectRight,
             "interactionDirection": result.interactionDirection,
             "imageUrl": result.imageUrl,
-            "knowledbaseUrl": result.knowledbaseUrl,
+            "externalLink": result.externalLink,
             "LTEsensors": result.LTEsensors,
             "requiredSensors": result.requiredSensors
         }
@@ -164,7 +164,7 @@ const updateCard = async (uuid, config) => {
             "interactionSubjectRight": config.interactionSubjectRight,
             "interactionDirection": config.interactionDirection,
             "imageUrl": config.imageUrl,
-            "knowledbaseUrl": config.knowledbaseUrl,
+            "externalLink": config.externalLink,
             "LTEsensors": config.LTEsensors,
             "requiredSensors": config.requiredSensors
         },
@@ -182,7 +182,7 @@ const updateCard = async (uuid, config) => {
             "interactionSubjectRight": result.interactionSubjectRight,
             "interactionDirection": result.interactionDirection,
             "imageUrl": result.imageUrl,
-            "knowledbaseUrl": result.knowledbaseUrl,
+            "externalLink": result.externalLink,
             "LTEsensors": result.LTEsensors,
             "requiredSensors": result.requiredSensors
         }

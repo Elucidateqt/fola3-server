@@ -30,22 +30,9 @@ exports.createBoard = async (req, res, next) => {
             roleNames.push(role.name)
         })
         
-        const cards = await Deck.getCardsInDeck(req.body.creatorDeck)
-        cards.forEach(card => {
-            delete card._id
-            //assign new uuid to prevent id-collisions if two players imported the same card into a board
-            card.uuid = uuidv4()
-            if(card.cardType === "interaction"){
-                card.addonsTop = []
-                card.addonsBot = []
-            }
-        })
-        
-        const board = await Board.createBoard(uuidv4(), boardName, boardDescription, user._id, roleIds, cards)
+        const board = await Board.createBoard(uuidv4(), boardName, boardDescription, user._id, roleIds)
         delete board._id
-        board.members[0].uuid = req.locals.user.uuid
-        board.members[0].username = req.locals.user.username
-        board.members[0].roles = roleNames
+
         logger.log('info', `Board with uuid ${board.uuid} created by user ${req.locals.user.uuid}`)
         res.status(200).send({ "message": "boardCreated", "board": board})
     }catch(err){
@@ -88,7 +75,7 @@ exports.getBoardsWithUser = async (req, res, next) => {
         const limit = req.query.limit || 20
         const boardList = await Board.getAllBoardsWithUser(req.locals.user._id, parseInt(limit), parseInt(offset))
         logger.log('info', `Loaded boards with User ${req.locals.user.uuid} from DB.`)
-        res.status(200).send({ "message": "boardsLoaded", "boardList": boardList })
+        res.status(200).send({"boardList": boardList })
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
@@ -180,22 +167,8 @@ exports.joinWithCode = async (req, res) => {
     }
     try{
         const roles = await Role.getBoardRolesByNameList(['boardMember'])
-        
-        //TODO: require actual deck in request and get cards
-        const cards = await Deck.getCardsInDeck(req.body.deckId)
-        cards.forEach(card => {
-            delete card._id
-            //assign new uuid to prevent id-collisions if two players imported the same card into a board
-            card.uuid = uuidv4()
-            
-            if(card.cardType === "interaction"){
-                card.addonsTop = []
-                card.addonsBot = []
-            }
 
-        })
-
-        await Board.addMembersToBoard(req.params.boardId, [{ user: req.locals.user._id, roles: [roles[0]._id], cards: cards }])
+        await Board.addMembersToBoard(req.params.boardId, [{ user: req.locals.user._id, roles: [roles[0]._id], cards: [] }])
         res.sendStatus(204)
     }catch(err){
         logger.log('error', err)
