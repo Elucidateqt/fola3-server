@@ -1,0 +1,72 @@
+apiVersion: apps/v1  # API version
+kind: Deployment
+metadata:
+  name: fola3-server # Unique name for the deployment
+  labels:
+    app: fola3-server       # Labels to be applied to this deployment
+spec:
+  selector:
+    matchLabels:     # This deployment applies to the Pods matching these labels
+      app: fola3-server
+  replicas: 1        # Run a single pod in the deployment
+  template:          # Template for the pods that will be created by this deployment
+    metadata:
+      labels:        # Labels to be applied to the Pods in this deployment
+        app: fola3-server
+    spec:            # Spec for the container which will be run inside the Pod.
+      imagePullSecrets:
+      - name: gitlab-soulan
+      containers:
+      - name: server
+        image: registry.gitlab.soulan.de/kano-surveyer/server
+        env:
+        # mongo junge
+        - name: MONGO_HOST
+          value: mongodb
+        - name: MONGO_PORT
+          value: "27017"
+        - name: MONGO_DATABASE
+          value: FOLA3
+        - name: MONGO_USER
+          value: fola3
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fola3-server
+              key: mongodb-password
+        # redis
+        - name: REDIS_HOST
+          value: redis-master
+        - name: REDIS_PORT
+          value: "6379"
+        # admin acc
+        - name: ADMIN_ACC_USERNAME
+          value: Root
+        - name: ADMIN_MAIL
+          value: root@fola.com
+        - name: ADMIN_ACC_PW
+          valueFrom:
+            secretKeyRef:
+              name: fola3-server
+              key: admin-pw
+        # tokens
+        - name: ACCESS_TOKEN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: fola3-server
+              key: access-token-secret
+        - name: ACCESS_TOKEN_LIFETIME
+          value: "60"
+        - name: REFRESH_TOKEN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: fola3-server
+              key: refresh-token-secret
+        - name: REFRESH_TOKEN_LIFETIME
+          value: "86400"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
+        ports:
+        - containerPort: 3000

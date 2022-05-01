@@ -70,9 +70,7 @@ const initializeMonitoring = async () => {
 const connectRedis = async () =>{
     try {
         const client = redis.createClient({
-            host: REDIS_HOST,
-            port: REDIS_PORT,
-            password: REDIS_PASSWORD
+            url: `redis://${REDIS_HOST}:${REDIS_PORT}`
         })
         await client.connect()
         const myRedis = registry.registerRedis(client)
@@ -88,7 +86,7 @@ const connectMongoDB = async () => {
         await mongoose.connect(`mongodb://${MONGO_HOST}:${MONGO_PORT}/${MONGO_DATABASE}`,
         {
             user: MONGO_USER,
-            pwd: MONGO_PASSWORD
+            pass: MONGO_PASSWORD
         })
     } catch (err) {
         throw new Error(`Error connecting to MongoDB: \n ${err}`)
