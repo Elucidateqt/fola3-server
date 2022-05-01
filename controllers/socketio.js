@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken')
+const os = require('os')
 const { v4: uuidv4, validate: isUuid } = require('uuid')
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'socketController' })
@@ -9,80 +10,76 @@ const Role = db.role
 const Board = db.board
 const Deck = db.deck
 
-let roomMap = {}
+/** @type {Redis} */
+const redis = registry.getService("redis")
 
 const initializeListeners = () => {
-    io.on('connection', async (socket) => {
-        logger.log('info', `user connected`)
-        /*const user = await User.getUserByUuid(data.userId)
-        if(!user){
-            socket.emit('exception', {message: "auth.auth_failed"})
-            return
-        }
-        //add to connected devices of user
-        socket.join(user.uuid)
-        socket.userUuid = user.uuid*/
-        
-
-        socket.on("leaveBoard", async (data) => {
-
-            if(!isUuid(data.userId)){
-                socket.emit('exception', {message: 'user.id_invalid'})
-                return
-            }
-            if(!isUuid(data.boardId)){
-                socket.emit('exception', {message: 'board.id_invalid'})
-                return
-            }
-
-            //validate user
-            const user = await User.getUserByUuid(data.userId)
-            if(!user){
+    
+    io.use(function(socket, next){
+        if (socket.handshake.query && socket.handshake.query.token){
+          jwt.verify(socket.handshake.query.token, process.env.ACCESS_TOKEN_SECRET, async (err, data) => {
+            if(err){
+                logger.error(`Error verifying token: \n ${err}`)
                 socket.emit('exception', {message: "auth.auth_failed"})
                 return
             }
+              try {
+                  let user = await User.getUserByUuid(data.uuid)
+                  if(user === null){
+                    logger.error('Error verifying token: User no longer exists')
+                    socket.emit('exception', {message: "auth.auth_failed"})
+                    return
+                  }
 
-            //load board and validate membership
-            const {board, userIndex} = await loadBoard(user, data.boardId)
-
-            if(board === null || userIndex === null){
-                socket.emit('exception', {message: 'board.id_invalid'})
+                  //map socket-id to user-id for future implementation of disaster-recovery
+                  await redis.HSET(`sockets@${os.hostname()}`, socket.id, user.uuid)
+                  socket.userId = user.uuid
+                  logger.log('info', `User ${socket.userId} connected via socketio`)
+                  next();
+              } catch (err) {
+                socket.emit('exception', {message: "auth.auth_failed"})
                 return
-            }
+              }
+          });
+        }
+        else {
+            socket.emit('exception', {message: "auth.auth_failed"})
+            return
+        }    
+      })
+
+    io.on('connection', async (socket) => {
+        logger.log('info', `user connected`)
 
 
-            if(roomMap.hasOwnProperty(board.uuid)){
-                roomMap[board.uuid] = roomMap[board.uuid].filter(uuid => uuid !== user.uuid)
-                io.to(board.uuid).emit('playerLeft', {"userId": user.uuid})
-            }
-            logger.log('info', `user ${user.uuid} left board ${board.uuid}`)
+        socket.on("leaveBoard", async (data) => {
+            //maybe some dedicated events for parallel boards in the future?
         });
 
 
-        socket.on("disconnecting", () => {
+        socket.on("disconnecting", async () => {
             console.log("socket disconnecting")
-            console.log(socket.rooms); // the Set contains at least the socket ID
+            const boardConnections = await redis.HINCRBY(`boards@user:${socket.userId}`, socket.boardId, -1)
+            if(boardConnections < 1){
+                io.to(socket.boardId).emit('playerLeft', {userId: socket.userId})
+            }
+
+            logger.log('info', `User ${socket.userId} disconnected from board ${socket.boardId}. Active connections left: ${boardConnections}`)
         });
 
 
         socket.on('joinBoard', async (data) => {
-            if(!isUuid(data.userId)){
-                socket.emit('exception', {message: 'user.id_invalid'})
-                return
-            }
             if(!isUuid(data.boardId)){
                 socket.emit('exception', {message: 'board.id_invalid'})
                 return
             }
 
             //validate user
-            const user = await User.getUserByUuid(data.userId)
+            const user = await User.getUserByUuid(socket.userId)
             if(!user){
                 socket.emit('exception', {message: "auth.auth_failed"})
                 return
             }
-
-            socket.join(user.uuid)
             
             //load board and validate membership
             const {board, userIndex} = await loadBoard(user, data.boardId)
@@ -90,17 +87,24 @@ const initializeListeners = () => {
                 socket.emit('exception', {message: "auth.auth_failed"})
                 return
             }
-            if(!roomMap.hasOwnProperty(board.uuid)){
-                roomMap[board.uuid] = new Array()
-            }
+            socket.boardId = board.uuid
+
             socket.join(board.uuid)
-            const isMember = roomMap[board.uuid].includes(user.uuid)
-            if(!isMember){
-                roomMap[board.uuid].push(user.uuid)
-                socket.broadcast.to(board.uuid).emit('playerJoined', {"user": board.members[userIndex]})
+            //increment counter of active connections user has in board
+            const boardConnections = await redis.HINCRBY(`boards@user:${user.uuid}`, board.uuid, 1)
+
+            for (let index = 0; index < board.members.length; index++) {
+                
+                const memberConnections = await redis.HGET(`boards@user:${board.members[index].uuid}`, board.uuid)
+                board.members[index].isOnline = (memberConnections !== null && memberConnections > 0)
+                delete board.members[index]._id
+                
             }
-            board.members = board.members.filter(member => roomMap[board.uuid].includes(member.uuid))
             socket.emit('setBoard', {"board": board})
+            //first socket of user joining room --> announce to board members
+            if(boardConnections === 1){
+                socket.broadcast.to(board.uuid).emit('playerJoined', {"user": user.uuid})
+            }
             logger.log('info', `User ${user.uuid} connected to board ${board.uuid}`)
         })
 
@@ -111,10 +115,6 @@ const initializeListeners = () => {
 
         socket.on('playInteraction', async (data) => {
             try {
-                if(!isUuid(data.userId)){
-                    socket.emit('exception', {message: 'action_invalid'})
-                    return
-                }
                 if(!isUuid(data.boardId)){
                     socket.emit('exception', {message: 'action_invalid'})
                     return
@@ -126,7 +126,7 @@ const initializeListeners = () => {
             
                 
                 //validate user
-                const user = await User.getUserByUuid(data.userId)
+                const user = await User.getUserByUuid(socket.userId)
                 if(!user){
                     socket.emit('exception', {message: "auth.auth_failed"})
                     return
@@ -168,10 +168,6 @@ const initializeListeners = () => {
 
         socket.on('pickUpInteraction', async (data) => {
             try {
-                if(!isUuid(data.userId)){
-                    socket.emit('exception', {message: 'action_invalid'})
-                    return
-                }
                 if(!isUuid(data.boardId)){
                     socket.emit('exception', {message: 'action_invalid'})
                     return
@@ -183,7 +179,7 @@ const initializeListeners = () => {
             
                 
                 //validate user
-                const user = await User.getUserByUuid(data.userId)
+                const user = await User.getUserByUuid(socket.userId)
                 if(!user){
                     socket.emit('exception', {message: "auth.auth_failed"})
                     return
@@ -220,7 +216,7 @@ const initializeListeners = () => {
                     delete card.addonsTop
                 }
 
-                const member = board.members.find(member => member.uuid === data.userId)
+                const member = board.members.find(member => member.uuid === user.uuid)
                 member.cards = member.cards.concat(cardList)
 
                 await Board.updateMemberCards(member._id, member.cards)
@@ -242,10 +238,6 @@ const initializeListeners = () => {
         })
 
         socket.on('createCard', async (data) => {
-            if(!isUuid(data.userId)){
-                socket.emit('exception', {message: 'action_invalid'})
-                return
-            }
             if(!isUuid(data.boardId)){
                 socket.emit('exception', {message: 'action_invalid'})
                 return
@@ -253,7 +245,7 @@ const initializeListeners = () => {
         
             
             //validate user
-            const user = await User.getUserByUuid(data.userId)
+            const user = await User.getUserByUuid(socket.userId)
             if(!user){
                 socket.emit('exception', {message: "auth.auth_failed"})
                 return
@@ -277,10 +269,6 @@ const initializeListeners = () => {
 
         socket.on('attachCard', async (data) => {
             try { 
-                if(!isUuid(data.userId)){
-                    socket.emit('exception', {message: 'action_invalid'})
-                    return
-                }
                 if(!isUuid(data.boardId)){
                     socket.emit('exception', {message: 'action_invalid'})
                     return
@@ -292,7 +280,7 @@ const initializeListeners = () => {
             
                 
                 //validate user
-                const user = await User.getUserByUuid(data.userId)
+                const user = await User.getUserByUuid(socket.userId)
                 if(!user){
                     socket.emit('exception', {message: "auth.auth_failed"})
                     return
@@ -355,10 +343,6 @@ const initializeListeners = () => {
 
         socket.on('detachCard', async (data) => {
             try { 
-                if(!isUuid(data.userId)){
-                    socket.emit('exception', {message: 'action_invalid'})
-                    return
-                }
                 if(!isUuid(data.boardId)){
                     socket.emit('exception', {message: 'action_invalid'})
                     return
@@ -375,7 +359,7 @@ const initializeListeners = () => {
             
                 
                 //validate user
-                const user = await User.getUserByUuid(data.userId)
+                const user = await User.getUserByUuid(socket.userId)
                 if(!user){
                     socket.emit('exception', {message: "auth.auth_failed"})
                     return
@@ -408,7 +392,7 @@ const initializeListeners = () => {
                         break;
                 }
 
-                const member = board.members.find(member => member.uuid === data.userId)
+                const member = board.members.find(member => member.uuid === user.uuid)
                 member.cards.push(addon.uuid)
                 await Board.updateMemberCards(member._id, member.cards)
 
@@ -422,12 +406,7 @@ const initializeListeners = () => {
         })
 
         socket.on('deleteCard', async (data) => {
-            console.log("deleteCard received", data)
             try { 
-                if(!isUuid(data.userId)){
-                    socket.emit('exception', {message: 'action_invalid'})
-                    return
-                }
                 if(!isUuid(data.boardId)){
                     socket.emit('exception', {message: 'action_invalid'})
                     return
@@ -439,7 +418,7 @@ const initializeListeners = () => {
                 
                 
                 //validate user
-                const user = await User.getUserByUuid(data.userId)
+                const user = await User.getUserByUuid(socket.userId)
                 if(!user){
                     socket.emit('exception', {message: "auth.auth_failed"})
                     return
@@ -515,10 +494,6 @@ const initializeListeners = () => {
 
         socket.on('updateCard', async (data) => {
             try { 
-                if(!isUuid(data.userId)){
-                    socket.emit('exception', {message: 'action_invalid'})
-                    return
-                }
                 if(!isUuid(data.boardId)){
                     socket.emit('exception', {message: 'action_invalid'})
                     return
@@ -531,7 +506,7 @@ const initializeListeners = () => {
                 
                 
                 //validate user
-                const user = await User.getUserByUuid(data.userId)
+                const user = await User.getUserByUuid(socket.userId)
                 if(!user){
                     socket.emit('exception', {message: "auth.auth_failed"})
                     return
@@ -576,9 +551,6 @@ const initializeListeners = () => {
             try {
 
                 //Validate data
-                if(!isUuid(data.userId)){
-                    throw new Error('board.id_invalid')
-                }
                 if(!isUuid(data.boardId)){
                     throw new Error('board.id_invalid')
                 }
@@ -587,7 +559,7 @@ const initializeListeners = () => {
                 }
 
                 //validate user
-                const user = await User.getUserByUuid(data.userId)
+                const user = await User.getUserByUuid(socket.userId)
                 if(!user){
                     socket.emit('exception', {message: "auth.auth_failed"})
                     return
