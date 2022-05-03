@@ -158,8 +158,7 @@ exports.joinWithCode = async (req, res) => {
         return member.uuid === req.locals.user.uuid
     })
     if(isBearerInBoard){
-        res.status(400).send({ error: 'already_member'})
-        return
+        return res.sendStatus(204)
     }
     if(req.query.inv !== req.locals.board.inviteCode){
         res.status(403).json({ error: 'invite.invalid'})
