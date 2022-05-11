@@ -20,6 +20,9 @@ spec:
       - name: server
         image: registry.gitlab.soulan.de/kano-surveyer/server
         env:
+        # other
+        - name: CLIENT_URL
+          value: https://fola3.elvir.dev
         # mongo junge
         - name: MONGO_HOST
           value: mongodb
