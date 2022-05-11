@@ -47,6 +47,15 @@ const createPermission = async (permissionName, uuid) => {
     }
 }
 
+const getPermissionsByIds = async (idList) => {
+    try {
+        const result = await Permission.find({"_id": {$in: idList}}).exec()
+        return result
+    } catch (err) {
+        throw new Error(`Error while loading permissions by ID from DB: \n ${err}`)
+    }
+}
+
 const getAllPermissions = async () => {
     try{
         const result = await Permission.find({}).exec()
@@ -101,4 +110,4 @@ const permissionExists = async (name) => {
     }
 }
 
-module.exports = { createPermission, getAllPermissions, getPermissionsByUuidList, getPermissionsByNameList, getPermissionCount, deletePermission, permissionExists }
+module.exports = { createPermission, getAllPermissions, getPermissionsByIds, getPermissionsByUuidList, getPermissionsByNameList, getPermissionCount, deletePermission, permissionExists }

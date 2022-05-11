@@ -197,6 +197,15 @@ const getBoardRolesByNameList = async (nameList) => {
     }
 }
 
+const getRolesByIds = async(roleIds) => {
+    try {
+        const roles = await Role.find({"_id": {"$in": roleIds}}).populate("permissions").exec()
+        return roles
+    } catch (err) {
+        throw new Error(`Error loading roles by Id list from DB: \n ${err}`)
+    }
+}
+
 const getRoleCount = async () => {
     try {
         const result = await Role.estimatedDocumentCount().exec()
@@ -247,4 +256,4 @@ const deleteRole = async (uuid) => {
     }
 }
 
-module.exports = {getRoleCount, createRole, getAllRoles, getRoleByUuid, updateRole, deleteRole, getRoleIdByName, getRolesByUuidList, getRolesByNameList, getBoardRolesByNameList, getBoardRoles, getRolePermissions, rolesContainPermissions, roleExists }
+module.exports = {getRoleCount, createRole, getAllRoles, getRolesByIds, getRoleByUuid, updateRole, deleteRole, getRoleIdByName, getRolesByUuidList, getRolesByNameList, getBoardRolesByNameList, getBoardRoles, getRolePermissions, rolesContainPermissions, roleExists }

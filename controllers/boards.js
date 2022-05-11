@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid')
 const User = db.user
 const Board = db.board
 const Role = db.role
+const Permission = db.permission
 const Deck = db.deck
 const registry = require('../lib/registry')
 const logger = registry.getService('logger').child({ component: 'boardController' })
@@ -74,6 +75,34 @@ exports.getBoardsWithUser = async (req, res, next) => {
         const offset = req.query.offset || 0
         const limit = req.query.limit || 20
         const boardList = await Board.getAllBoardsWithUser(req.locals.user._id, parseInt(limit), parseInt(offset))
+        for(i = 0; i < boardList.length; i++ ){
+            let board = boardList[i]
+            let cleanedMembers = {}
+            for(j = 0; j < board.members.length; j++){
+                let member = board.members[j]
+                let roles = []
+                let permissions = []
+                let memberRoles = await Role.getRolesByIds(member.roles.flat())
+                memberRoles.forEach(memberRole => {
+                    if(!roles.some(role => role.uuid === memberRole.uuid)){
+                        roles.push({"name": memberRole.name, "uuid": memberRole.uuid})
+                    }
+                    memberRole.permissions.forEach(currPermission => {
+                        if(!permissions.includes(currPermission.name)){
+                            permissions.push(currPermission.name)
+                        }
+                    })
+                })
+                member.roles = roles
+                member.permissions = permissions
+                member.uuid = member.uuid[0]
+                member.username = member.username[0]
+                delete member.__v
+                delete member._id
+                cleanedMembers[member.uuid] = member
+            }
+            board.members = cleanedMembers
+        }
         logger.log('info', `Loaded boards with User ${req.locals.user.uuid} from DB.`)
         res.status(200).send({"boardList": boardList })
     }catch(err){
@@ -253,7 +282,7 @@ exports.leaveBoard = async (req, res, next) => {
             return 
         }
         //reject if the board would be left without any admins
-        if(board.members.filter(user => user.boardroles.some(role => role.name === 'boardAdmin') && user.uuid != req.locals.user.uuid).length === 0){
+        if(board.members.filter(user => user.roles.some(role => role.name === 'boardAdmin') && user.uuid != req.locals.user.uuid).length === 0){
             logger.log('warn', `User ${req.locals.user.uuid} not permitted to leave. Last admin left`)
             return res.status(405).send({ "message": "lastAdminLeft" })
         }

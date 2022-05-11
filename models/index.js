@@ -120,14 +120,6 @@ db.initialize = async () => {
             logger.log("info","Public content user created successfully")
         }
 
-        const baseSetExists = await db.cardset.setExists("Basic Set")
-        if(!baseSetExists){
-            logger.log('info',"Basic cardset not found. Creating cardset...")
-            const baseSet = await db.cardset.createCardSet(uuidv4(), "Basic Set", null, false, publicUser._id)
-            logger.log("info","Basic cardset created successfully")
-        }
-
-
         let metricsUsers = await db.user.getUsersWithRole('metrics collector')
         let prometheusUser =  metricsUsers.find(user => user.username === PROMETHEUS_USERNAME)
         if(prometheusUser !== undefined){

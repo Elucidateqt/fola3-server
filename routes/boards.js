@@ -20,7 +20,7 @@ body('name').exists().isString().trim().isLength({min: 3, max: 128}).withMessage
 body('description').exists().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').isAlpha('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
 controller.createBoard)
 
-router.delete('/:boardId', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), authMiddleware.authenticateBoardPermission('BOARD:DELETE'), controller.deleteBoard)
+router.delete('/:boardId', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), authMiddleware.authenticateBoardPermission('API:BOARD:DELETE'), controller.deleteBoard)
 
 router.put('/:boardId/description', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'),
 body('description').exists().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').isAlpha('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
@@ -35,9 +35,9 @@ controller.setBoardName)
 
 router.post('/:boardId/users/me', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), query('inv').exists().trim(), boardMiddleware.loadBoard, controller.joinWithCode)
 
-router.post('/:boardId/users', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), boardMiddleware.loadBoard, authMiddleware.authenticateBoardPermission('BOARD:MANAGE'), controller.addMembers)
+router.post('/:boardId/users', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), boardMiddleware.loadBoard, authMiddleware.authenticateBoardPermission('API:BOARD:MANAGE'), controller.addMembers)
 
-router.delete('/:boardId/users', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), boardMiddleware.loadBoard, authMiddleware.authenticateBoardPermission('BOARD:MANAGE'), controller.removeMemembers)
+router.delete('/:boardId/users', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), boardMiddleware.loadBoard, authMiddleware.authenticateBoardPermission('API:BOARD:MANAGE'), controller.removeMemembers)
 
 
 router.delete('/:boardId/users/me', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), boardMiddleware.isUserBoardMember, controller.leaveBoard )

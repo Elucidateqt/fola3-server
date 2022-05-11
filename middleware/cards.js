@@ -17,6 +17,7 @@ exports.loadCard = async (req, res, next) => {
             return res.sendStatus(404)
         }
         req.locals.card = result[0]
+        req.locals.card.cardset = req.locals.card.cardset[0]
         next()
     }catch(err){
         logger.log('error', err)
@@ -34,7 +35,7 @@ exports.isOwnerOrManager = async (req, res, next) => {
     }
     try{
         const bearerSets = await CardSet.getCardSetsOfUser(req.locals.user._id)
-        const isOwnerOfCard = bearerSets.some(set => set._id.equals(req.locals.card.cardset))
+        const isOwnerOfCard = bearerSets.some(set => set._id.equals(req.locals.card.cardset._id))
         if(!isOwnerOfCard){
             return res.sendStatus(403)
         }

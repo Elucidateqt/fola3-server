@@ -14,11 +14,11 @@ const logger = registry.getService('logger').child({ component: 'authController'
 const ACCESS_TOKEN_LIFETIME = process.env.ACCESS_TOKEN_LIFETIME || 60
 const REFRESH_TOKEN_LIFETIME = process.env.REFRESH_TOKEN_LIFETIME || 86400
 
-const signUp = async (req, res, next) => {
+const signUp = async (req, res) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });
-      return next()
+      return
     }
     try {
         const roleId = await Role.getRoleIdByName("user")
@@ -27,25 +27,21 @@ const signUp = async (req, res, next) => {
         const userCardSet = await db.cardset.createCardSet(uuidv4(), `${req.body.username}'s Set`, "", false, user._id)
         logger.log("info", `User ${user.username} created successfully!`)
         res.status(204).send({ "message": "userCreated", "user": user})
-        next()
     }catch(err){
         res.status(500).send({ "message": err })
-        next()
     }
 };
 
 
-const signIn = async (req, res, next) => {
+const signIn = async (req, res) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return next()
+      return res.status(400).json({ errors: errors.array() });
     }
     try{
         const user = await User.getUserByEmail(req.body.email)
         if (!user) {
-            res.status(404).send({ message: "User Not found." });
-            return next()
+            return res.status(404).send({ message: "User Not found." });
         }
     
         const passwordValid = await bcrypt.compare(
@@ -54,11 +50,10 @@ const signIn = async (req, res, next) => {
         )
     
         if (!passwordValid) {
-            res.status(401).send({
+            return res.status(401).send({
               accessToken: null,
               message: "Invalid Password!"
             });
-            return next()
         }
         const accessToken = await generateAccessToken(user.uuid, parseInt(ACCESS_TOKEN_LIFETIME))
         const refreshToken = await generateRefreshToken(user.uuid, parseInt(REFRESH_TOKEN_LIFETIME))
@@ -71,54 +66,46 @@ const signIn = async (req, res, next) => {
             "access_token": accessToken
         });
         logger.log('info',`User ${user.username} logged in`)
-        next()
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
-        next()
     }
 }
 
-const signOut = async (req, res, next) => {
+const signOut = async (req, res) => {
     try{
         const authHeader = req.headers['authorization']
         const token = authHeader && authHeader.split(' ')[1]
         if(token == null){
-            res.sendStatus(401)
-            return next()
+            return res.sendStatus(401)
         }
         jwt.verify(token,process.env.REFRESH_TOKEN_SECRET, async (err, data) => {
             if(err){
                 logger.log("error", err)
-                res.sendStatus(403)
-                return next()
+                return res.sendStatus(403)
             }
             logger.log('debug', `Logout user ${data.uuid} with jti ${data.jti}`)
             await redis.del(`sessions:${data.uuid}:${data.jti}`)
             logger.log("info", `User ${data.uuid} signed out`)
             res.sendStatus(204)
-            next()
         })
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
-        next()
     }
 }
 
-const refreshAccessToken = async (req, res, next) => {
+const refreshAccessToken = async (req, res) => {
     try{
         const authHeader = req.headers['authorization']
         const token = authHeader && authHeader.split(' ')[1]
         if(token == null || token === undefined){
-            res.sendStatus(401)
-            return next()
+            return res.sendStatus(401)
         }
         jwt.verify(token,process.env.REFRESH_TOKEN_SECRET, async (err, data) => {
             if(err){
                 logger.error(`Error verifying token in controllers.auth: \n ${err}`)
-                res.sendStatus(403)
-                return next()
+                return res.sendStatus(403)
             }
             await redis.del(`sessions:${data.uuid}:${data.jti}`)
             const accessToken = await generateAccessToken(data.uuid, parseInt(ACCESS_TOKEN_LIFETIME))
@@ -131,12 +118,10 @@ const refreshAccessToken = async (req, res, next) => {
                 "expires_in": process.env.ACCESS_TOKEN_LIFETIME,
                 "access_token": accessToken
             })
-            next()
         })
     }catch(err){
         logger.log('error', err)
         res.sendStatus(500)
-        next()
     }
 }
 

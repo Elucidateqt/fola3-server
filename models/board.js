@@ -205,7 +205,7 @@ const getAllBoardsWithUser = async (userId, limit, offset) => {
                     "$push": {
                         "uuid": "$user.uuid",
                         "username": "$user.username",
-                        "role": "$user.role"
+                        "roles": "$members.roles"
                     }
                 }
             }},
