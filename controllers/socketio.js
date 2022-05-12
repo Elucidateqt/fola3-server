@@ -215,11 +215,13 @@ const initializeListeners = () => {
                 if(card.hasOwnProperty('addonsBot')){
                     cardList = cardList.concat(card.addonsBot)
                     delete card.addonsBot
+                    await Board.updateBoardCards(board._id, board.cards)
                 }
 
                 if(card.hasOwnProperty('addonsTop')){
                     cardList = cardList.concat(card.addonsTop)
                     delete card.addonsTop
+                    await Board.updateBoardCards(board._id, board.cards)
                 }
 
                 const member = board.members.find(member => member.uuid === user.uuid)
