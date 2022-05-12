@@ -23,7 +23,7 @@ router.get('/:cardId', authMiddleware.authenticateToken, param('cardId').trim().
 
 router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticateBoardPermission('API:CARDS:CREATE'),
 body('name').optional().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlphanumeric('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
-body('description').optional().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').isAlphanumeric('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
+body('description').optional().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').matches(/^[A-Za-z0-9 .\-\n,':!&]+$/).withMessage('No special characters allowed.'),
 body('type').optional().isString().trim().isIn(['LET', 'interaction', 'what']),
 body('imageUrl').optional().trim().isURL(),
 body('externalLink').optional().trim().isURL(),
@@ -39,7 +39,7 @@ router.delete('/:cardId', authMiddleware.authenticateToken, param('cardId').trim
 router.put('/:cardId', authMiddleware.authenticateToken, param('cardId').trim().isUUID().withMessage('must be valid UUID'),
 body('cardset').optional().isString().trim().isUUID().withMessage('must be valid UUID'),
 body('name').optional().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlphanumeric('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
-body('description').optional().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').isAlphanumeric('en-US', {ignore: ' '}).withMessage('No special characters allowed.'),
+body('description').optional().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').matches(/^[A-Za-z0-9 .\-\n,':!&]+$/).withMessage('No special characters allowed.'),
 body('type').optional().isString().trim().isIn(['LET', 'interaction', 'what']),
 body('imageUrl').optional().trim().isURL(),
 body('externalLink').optional().trim().isURL(),
