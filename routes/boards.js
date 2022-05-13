@@ -16,14 +16,14 @@ controller.getBoardsWithUser)
 router.get('/:boardId', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), boardMiddleware.loadBoard, boardMiddleware.canViewBoard, controller.returnBoard)
 
 router.post('/', authMiddleware.authenticateToken, authMiddleware.authenticatePermission("API:BOARD:CREATE"),
-body('name').exists().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlpha('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
-body('description').exists().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').isAlpha('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
+body('name').exists().isString().trim().isLength({min: 3, max: 128}).withMessage('Must be between 3 and 128 characters long.').isAlphanumeric('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
+body('description').exists().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').matches(/^[A-Za-z0-9 \/.()\-\n,':!&]+$/).withMessage('No special characters allowed.'),
 controller.createBoard)
 
 router.delete('/:boardId', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'), authMiddleware.authenticateBoardPermission('API:BOARD:DELETE'), controller.deleteBoard)
 
 router.put('/:boardId/description', authMiddleware.authenticateToken, param('boardId').trim().isUUID().withMessage('must be valid UUID'),
-body('description').exists().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').isAlpha('de-DE', {ignore: ' '}).withMessage('No special characters allowed.'),
+body('description').exists().isString().trim().isLength({min: 3, max: 256}).withMessage('Must be between 3 and 256 characters long.').matches(/^[A-Za-z0-9 \/.()\-\n,':!&]+$/).withMessage('No special characters allowed.'),
 boardMiddleware.loadBoard, authMiddleware.authenticateBoardPermission('BOARD:MANAGE'),
 controller.setBoardDescription)
 
