@@ -9,7 +9,7 @@ const { body, param } = require('express-validator')
 router.post('/', authWare.authenticateToken, authWare.authenticatePermission("API:USERS:CREATE"), 
 body('email').exists().isEmail().normalizeEmail().custom(userWare.checkDuplicateEmail),
 body('password').exists().isString().isLength({min: 5}),
-body('username').exists().isString().isLength({min: 3, max: 16}).isAlphanumeric('en-US', {ignore: ' '}).custom(userWare.checkDuplicateUsername),
+body('username').exists().isString().isLength({min: 3, max: 32}).isAlphanumeric('en-US', {ignore: ' '}).custom(userWare.checkDuplicateUsername),
 controller.createUser)
 
 
@@ -19,7 +19,7 @@ controller.updateBearerPassword)
 
 router.put('/:userId/profile', authWare.authenticateToken, authWare.authenticatePermission("API:USERS:PROFILE:UPDATE"), 
 param('userId').trim().isUUID().withMessage('must be valid UUID'),
-body('username').exists().isString().trim().isLength({min: 3, max: 16}).isAlphanumeric('en-US', {ignore: ' '}),
+body('username').exists().isString().trim().isLength({min: 3, max: 32}).isAlphanumeric('en-US', {ignore: ' '}).custom(userWare.checkDuplicateUsername),
 body('email').exists().isString().trim().isEmail().normalizeEmail(),
 controller.updateUser)
 
