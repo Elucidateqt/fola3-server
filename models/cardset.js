@@ -30,9 +30,11 @@ const CardSetSchema = new mongoose.Schema(
     { timestamps: true }
 )
 
+/**
+ * Middleware that deletes cards if their affiliated cardset is deleted
+ */
 CardSetSchema.pre('deleteOne', async function(next) {
     const set = await mongoose.models.CardSet.findOne(this.getQuery())
-    //remove card from all decks
     try {
         await mongoose.models.Card.deleteMany(
             { "cardset": set._id},

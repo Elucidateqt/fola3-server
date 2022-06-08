@@ -1,3 +1,8 @@
+/**
+ * SocketIO Controller
+ * In contrast to all other controllers, this controller implements the event-pattern instead of the pipes and filters pattern.
+ */
+
 const jwt = require('jsonwebtoken')
 const os = require('os')
 const { v4: uuidv4, validate: isUuid } = require('uuid')

@@ -1,3 +1,7 @@
+/**
+ * Root module for MongoDB communication.
+ */
+
 const bcrypt = require('bcrypt')
 const { v4: uuidv4 } = require('uuid')
 
@@ -74,6 +78,10 @@ db.BASE_ROLES = [
     }
 ]
 
+/**
+ * creates required data structures in MongoDB if not present.
+ * @returns {Object} User - Metrics user, used by Prometheus to gain access to metrics-route
+ */
 db.initialize = async () => {
     try{
         //check if permissions for basic functionality exist in db and add them otherwise

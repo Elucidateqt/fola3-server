@@ -1,23 +1,17 @@
 {
-  "name": "@elucidate/kano-surveyer-server",
-  "version": "0.0.1",
-  "description": "node-server for the kano surveyer app",
+  "name": "FoLA3 server",
+  "version": "0.1.0",
+  "description": "Server-application of FoLA3",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "nodemon app.js"
   },
   "repository": {
     "type": "git",
     "url": "ssh://git@gitlab.soulan.de:23/kano-surveyer/server.git"
   },
-  "keywords": [
-    "kano",
-    "survey",
-    "feeback"
-  ],
   "author": "Elvir Bajrami",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "dependencies": {
     "bcrypt": "^5.0.1",
     "cors": "^2.8.5",

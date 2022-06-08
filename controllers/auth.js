@@ -125,6 +125,12 @@ const refreshAccessToken = async (req, res) => {
     }
 }
 
+/**
+ * creates a signed refresh-token with the configured secret
+ * @param {String} userId - the uuid to be encoded in the token
+ * @param {Number} ttl - the tokens lifetime
+ * @returns {Object} the resulting token
+ */
 const generateRefreshToken = async (userId, ttl) => {
     try {
         const tokenId = uuidv4()
@@ -143,11 +149,17 @@ const generateRefreshToken = async (userId, ttl) => {
     }
 }
 
-
+/**
+ * creates a signed access-token based on data provided
+ * @param {String} uuid - the uuid to encode in the token
+ * @param {Number} ttl  - the lifetime for the token
+ * @returns {Object} the signed token
+ */
 const generateAccessToken = async (uuid, ttl) => {
     try{
         const ttlExists = ttl !== undefined 
         const tokenPayload =  ({
+            //conditional inclusion of ttl into object, if a ttl was provided
             ...ttlExists && { exp: Math.floor(Date.now() / 1000) + ttl },
             "uuid": uuid
           });

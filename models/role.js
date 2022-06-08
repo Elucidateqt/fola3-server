@@ -24,7 +24,10 @@ const RoleSchema = new mongoose.Schema(
     { timestamps: true }
 )
 
-//TODO: remove roles from boardroles if necessary
+/**
+ * Cascading delete for roles that removes the deleted role
+ * from all users or board-members, depending on the role's scope.
+ */
 RoleSchema.pre('remove', async (doc) => {
     const role = this
     //remove role from all board-members if it's a board role
@@ -39,7 +42,10 @@ RoleSchema.pre('remove', async (doc) => {
     );
 });
 
-//TODO: add role to board admins if necessary
+/**
+ * middleware function to give any newly created board-roles to all board-admins for
+ * local management
+ */
 RoleSchema.post('save', async (role) => {
     if(role.scope === 'board'){
         const adminRole = await role.constructor.find({"name": "boardAdmin"})

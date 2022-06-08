@@ -87,13 +87,3 @@ exports.userHasAllPermissions = async (permissions, { req }) => {
   }
   return true
 }
-
-/*This function implements the rule "Users can only grant boardroles that they own themselves"- might be useful in the future
-exports.canUserGrantRole = (res, req, next) => {
-  let targetRoles = []
-  req.body.user.forEach(user => targetRoles = targetRoles.concat(user.roles))
-  if(targetRoles.every(targetRole => req.locals.user.boardRoles.includes(targetRole))){
-    return next()
-  }
-  return res.status(401).send({ "message": "roleGrantDenied" })
-}*/

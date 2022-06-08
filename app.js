@@ -23,7 +23,10 @@ const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, prettyPrint } = format;
 
 
-
+/**
+ * creates the winston-instance for logging, adds it to the service-registry.
+ * @returns the registered winston instance
+ */
 const initializeLogger = async () => {
     const console = new transports.Console({level: 'debug'})
     const errorFile = new transports.File({level: 'error', filename: 'logs/errors.log'})
@@ -48,6 +51,11 @@ const initializeLogger = async () => {
     return myLogger
 }
 
+/**
+ * Initializes the prometheus registry and middleware that collects and stores
+ * API-metrics that are served on /metrics
+ * @returns 
+ */
 const initializeMonitoring = async () => {
     try {
         let tracker = {}
@@ -67,6 +75,11 @@ const initializeMonitoring = async () => {
     }
 }
 
+/**
+ * creates an instance of the redis client and connects it 
+ * to a deployed Redis-instance.
+ * @returns the registered promClient-instance
+ */
 const connectRedis = async () =>{
     try {
         const client = redis.createClient({
@@ -117,11 +130,6 @@ const connectMongoDB = async () => {
         app.use(express.json())
         app.use(express.urlencoded({extended: true}))
         
-        
-        /*httpEvents.on('httpRequestReceived', (method, url, params, body, timestamp) => {
-            myLogger.log('info', `HTTP Event received: ${method}, ${url}, params: ${params}, body: ${body}, timestamp: ${timestamp}`)
-        })*/
-        
         //routes and db after logger-creation, so they can load it
         const authRoute = require("./routes/auth")
         const userRoute = require('./routes/users')
@@ -134,7 +142,6 @@ const connectMongoDB = async () => {
         const deckRoute = require('./routes/decks')
 
         
-        //TODO: just for testing. remove
         const fireHttpEvent = (req, res, next) => {
             const method = req.method
             const url = req.url

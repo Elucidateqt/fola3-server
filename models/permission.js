@@ -14,6 +14,9 @@ const PermissionSchema = new mongoose.Schema(
     { timestamps: true }
 )
 
+/**
+ * Middleware that gives any permissions created to super admins
+ */
 PermissionSchema.pre('save', function(next) {
     const permission = this
     //give all created permissions to super admin
@@ -22,6 +25,10 @@ PermissionSchema.pre('save', function(next) {
     next);
 });
 
+/**
+ * Middleware that implements cascading deletion to remove permissions
+ * from roles at the time of deletion.
+ */
 PermissionSchema.pre('remove', function(next) {
     const permission = this
     // Remove permission from all roles that have it

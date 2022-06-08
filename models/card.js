@@ -30,12 +30,16 @@ const CardSchema = new mongoose.Schema(
         "interactionDirection": String,
         "imageUrl": String,
         "externalLink": String,
-        "LTEsensors": [String],
-        "requiredSensors": [String]
+        "LTEsensors": [String], //currently not supported
+        "requiredSensors": [String] //currently not supported
     },
     { timestamps: true }
 )
 
+
+/**
+ * Middleware that implements cascading deletion if a singular card is deleted
+ */
 CardSchema.pre('deleteOne', async function(next) {
     const card = await mongoose.models.Card.findOne(this.getQuery())
     //remove card from all decks
@@ -50,6 +54,9 @@ CardSchema.pre('deleteOne', async function(next) {
     }
 });
 
+/**
+ * Mideleware that implements cascading deletion if multiple cards are deleted at once
+ */
 CardSchema.pre('deleteMany', async function(next) {
     const cards = await mongoose.models.Card.find(this.getQuery())
     const idList = cards.map(card => card._id)
@@ -106,6 +113,15 @@ const getCardByUuid = async (uuid) => {
     }
 }
 
+/**
+ * 
+ * @param {Object} options - an object with data to create the query dynamically
+ * @param {String} [options.sortBy] - data by which the results are to be sorted by. Default: 'updatedAt'
+ * @param {String} [options.sortDir] - the direction of sorting (ASC or DESC). Default: 'DESC'
+ * @param {Number} [options.limit] - how many results should be returned for pagination. Default: 50
+ * @param {Number} [options.offset] - offset of returned results, used for pagination. Default: 0
+ * @returns 
+ */
 const getCards = async (options) => {
     let matchAggregator = {$match: {}},
     sortBy = options.sortBy || 'updatedAt',
